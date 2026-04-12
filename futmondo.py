@@ -108,19 +108,30 @@ def procesar_datos():
     df_hechos = df_hechos[columnas_final].sort_values(by=["Temporada", "Jornada", "Puntos"], ascending=[True, True, False])
     df_hechos.to_excel(ARCHIVO_HECHOS, index=False)
     
-    # --- NUEVO: LA GRAN FUSIÓN GLOBAL ---
-    print("\n📦 Integrando con el Histórico Global...")
+    # --- LA GRAN FUSIÓN GLOBAL (Versión Evolucionada) ---
+    print("\n📦 Generando Master Global con todas las temporadas...")
+    
+    # 1. Empezamos con el histórico antiguo (21/22 - 24/25)
+    lista_dfs = []
     if os.path.exists("Fact_Historica_Total.xlsx"):
-        df_historico = pd.read_excel("Fact_Historica_Total.xlsx")
+        lista_dfs.append(pd.read_excel("Fact_Historica_Total.xlsx"))
+    
+    # 2. Buscamos TODOS los archivos de temporadas nuevas que el bot haya ido creando
+    # Esto buscará Fact_Futmondo_2025_26, Fact_Futmondo_2026_27, etc.
+    archivos_temporadas = [f for f in os.listdir('.') if f.startswith("Fact_Futmondo_20") and f.endswith(".xlsx")]
+    
+    for archivo in archivos_temporadas:
+        print(f"   + Añadiendo datos de: {archivo}")
+        lista_dfs.append(pd.read_excel(archivo))
+    
+    # 3. Consolidamos todo en el Master
+    if lista_dfs:
+        df_global = pd.concat(lista_dfs, ignore_index=True)
+        # Eliminamos posibles duplicados por si acaso
+        df_global = df_global.drop_duplicates(subset=["ID_Futmondo", "Jornada", "Temporada"])
         
-        # Unimos el pasado con el presente
-        df_global = pd.concat([df_historico, df_hechos], ignore_index=True)
-        
-        # Guardamos el archivo maestro que usarás en Power BI / Tableau
         df_global.to_excel("Fact_Global_Master.xlsx", index=False)
-        print("✅ Archivo 'Fact_Global_Master.xlsx' generado con TODAS las temporadas integradas.")
-    else:
-        print("⚠️ No se encontró 'Fact_Historica_Total.xlsx'. Asegúrate de que está subido al repositorio.")
+        print(f"✅ Master Global actualizado con {len(df_global)} registros totales.")
 
     print(f"✅ ETL Finalizado con éxito.")
 
