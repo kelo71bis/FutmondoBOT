@@ -1,8 +1,13 @@
-import requests
-import pandas as pd
-import time
-from datetime import datetime
 import os
+import pandas as pd
+import requests
+from datetime import datetime
+from dotenv import load_dotenv
+
+# Esto "despierta" tu archivo .env local cuando estás en tu PC
+load_dotenv() 
+
+TOKEN = os.getenv("FUTMONDO_TOKEN")
 
 # --- CONFIGURACIÓN ---
 TOKEN = os.getenv("FUTMONDO_TOKEN")
