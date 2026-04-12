@@ -132,11 +132,30 @@ def procesar_datos():
     # 3. Consolidamos todo en el Master
     if lista_dfs:
         df_global = pd.concat(lista_dfs, ignore_index=True)
-        # Eliminamos posibles duplicados por si acaso
+        # Eliminamos posibles duplicados
         df_global = df_global.drop_duplicates(subset=["ID_Futmondo", "Jornada", "Temporada"])
         
+        # --- NUEVAS MÉTRICAS ANALÍTICAS ---
+        print("🧮 Calculando métricas avanzadas y rankings...")
+        
+        # Asegurarnos de que el orden temporal es estrictamente correcto para el acumulado
+        df_global = df_global.sort_values(by=["Temporada", "Jornada"])
+        
+        # 1. Acumulado Total (Histórico absoluto por jugador)
+        df_global['Acumulado_Total'] = df_global.groupby('ID_Futmondo')['Puntos'].cumsum()
+        
+        # 2. Ranking de la Jornada (método 'min' para empates: si hay dos 1ºs, el siguiente es 3º)
+        df_global['Ranking_Jornada'] = df_global.groupby(['Temporada', 'Jornada'])['Puntos'].rank(ascending=False, method='min')
+        
+        # 3. Ranking de la Temporada
+        df_global['Ranking_Temporada'] = df_global.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(ascending=False, method='min')
+        
+        # 4. Ranking General (Histórico)
+        df_global['Ranking_General'] = df_global.groupby(['Temporada', 'Jornada'])['Acumulado_Total'].rank(ascending=False, method='min')
+
+        # Guardamos el archivo maestro enriquecido
         df_global.to_excel("Fact_Global_Master.xlsx", index=False)
-        print(f"✅ Master Global actualizado con {len(df_global)} registros totales.")
+        print(f"✅ Master Global actualizado con rankings y {len(df_global)} registros totales.")
 
     print(f"✅ ETL Finalizado con éxito.")
 
