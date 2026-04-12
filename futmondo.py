@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 
 # --- CONFIGURACIÓN ---
-TOKEN = "dbea_bc7d6e14159df6c5ef69972885b2af71"
+TOKEN = os.getenv("FUTMONDO_TOKEN")
 USER_ID = "5dcac7a682052f531c77f140"
 CHAMPIONSHIP_ID = "5f452f5d3e7c0d5ae0fbe924"
 USER_TEAM_ID = "5f452f5e66dd374930eb2b71"
