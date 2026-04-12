@@ -103,12 +103,26 @@ def procesar_datos():
     df_hechos = df_hechos.sort_values(by=["ID_Futmondo", "Jornada"])
     df_hechos['Puntos_Acumulados'] = df_hechos.groupby('ID_Futmondo')['Puntos'].cumsum()
 
-    # Guardar la tabla final
+    # Guardar la tabla final de la temporada actual
     columnas_final = ["ID_Futmondo", "Jornada", "Temporada", "Puntos", "Puntos_Acumulados"]
     df_hechos = df_hechos[columnas_final].sort_values(by=["Temporada", "Jornada", "Puntos"], ascending=[True, True, False])
     df_hechos.to_excel(ARCHIVO_HECHOS, index=False)
     
-    print(f"✅ ETL Finalizado. Archivo '{ARCHIVO_HECHOS}' actualizado con éxito.")
+    # --- NUEVO: LA GRAN FUSIÓN GLOBAL ---
+    print("\n📦 Integrando con el Histórico Global...")
+    if os.path.exists("Fact_Historica_Total.xlsx"):
+        df_historico = pd.read_excel("Fact_Historica_Total.xlsx")
+        
+        # Unimos el pasado con el presente
+        df_global = pd.concat([df_historico, df_hechos], ignore_index=True)
+        
+        # Guardamos el archivo maestro que usarás en Power BI / Tableau
+        df_global.to_excel("Fact_Global_Master.xlsx", index=False)
+        print("✅ Archivo 'Fact_Global_Master.xlsx' generado con TODAS las temporadas integradas.")
+    else:
+        print("⚠️ No se encontró 'Fact_Historica_Total.xlsx'. Asegúrate de que está subido al repositorio.")
+
+    print(f"✅ ETL Finalizado con éxito.")
 
 if __name__ == "__main__":
     procesar_datos()
