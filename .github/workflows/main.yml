@@ -24,10 +24,12 @@ jobs:
         run: |
           pip install requests pandas openpyxl
 
-      - name: Ejecutar Bot
+      - name: Ejecutar Scripts
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
-        run: python futmondo.py
+        run: |
+          python futmondo.py
+          python migrador_historico.py
 
       - name: Guardar cambios en el repositorio
         run: |
