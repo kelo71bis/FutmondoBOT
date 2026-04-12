@@ -1,0 +1,38 @@
+name: Actualizar Datos Futmondo
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Se ejecuta todos los días a las 08:00 AM UTC
+  workflow_dispatch:     # Permite ejecutarlo a mano cuando quieras
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Permiso para que el bot pueda subir el Excel al repo
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar librerías
+        run: |
+          pip install requests pandas openpyxl
+
+      - name: Ejecutar Bot
+        env:
+          FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
+        run: python futmondo.py
+
+      - name: Guardar cambios en el repositorio
+        run: |
+          git config --global user.name 'GitHub Action Bot'
+          git config --global user.email 'action@github.com'
+          git add .
+          git commit -m "Actualización automática: $(date +'%Y-%m-%d %H:%M')" || exit 0
+          git push
