@@ -1,9 +1,12 @@
 import requests
 import pandas as pd
 import os
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # Si estamos en GitHub, ignoramos este paso porque usa Secrets
 
-load_dotenv()
 TOKEN = os.getenv("FUTMONDO_TOKEN")
 URL_COPA = "https://api.futmondo.com/5/cup/get"
 
@@ -22,9 +25,9 @@ PAYLOAD = {
 # --- 2. CONFIGURACIÓN DE JORNADAS (Tú actualizas esto cada vez que hacéis Copa) ---
 # Aquí le decimos al bot en qué jornadas reales de liga cae cada eliminatoria
 MAPEO_JORNADAS = {
-    1: {"nombre": "Cuartos", "ida": 28, "vuelta": 29},
-    2: {"nombre": "Semifinal", "ida": 30, "vuelta": 31},
-    3: {"nombre": "Final", "ida": 32, "vuelta": None} # La final suele ser a partido único
+    1: {"nombre": "Cuartos", "ida": 30, "vuelta": 31},
+    2: {"nombre": "Semifinal", "ida": 32, "vuelta": 33},
+    3: {"nombre": "Final", "ida": 34, "vuelta": None} # La final suele ser a partido único
 }
 TEMPORADA_ACTUAL = "2025/26"
 NOMBRE_COPA = "Copa 03"

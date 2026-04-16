@@ -2,10 +2,11 @@ import os
 import pandas as pd
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
-
-# Esto "despierta" tu archivo .env local cuando estás en tu PC
-load_dotenv() 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # Si estamos en GitHub, ignoramos este paso porque usa Secrets
 
 TOKEN = os.getenv("FUTMONDO_TOKEN")
 
