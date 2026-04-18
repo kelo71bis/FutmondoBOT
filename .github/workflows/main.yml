@@ -1,38 +1,38 @@
-name: Actualizar Datos Futmondo
+name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Se ejecuta todos los días a las 08:00 AM UTC
-  workflow_dispatch:     # Permite ejecutarlo a mano cuando quieras
+    # Se ejecuta todos los días a las 23:00 UTC (01:00 AM hora española de verano)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # Permite ejecución manual por si acaso
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Permiso para que el bot pueda subir el Excel al repo
 
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+      - name: Descargar repositorio
+        uses: actions/checkout@v3
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
       - name: Instalar librerías
         run: |
-          pip install requests pandas openpyxl
+          pip install pandas openpyxl requests python-dotenv
 
-      - name: Ejecutar Scripts
+      - name: Ejecutar Extracción de Datos Maestros
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
-        run: python futmondo.py
-
-      - name: Guardar cambios en el repositorio
         run: |
-          git config --global user.name 'GitHub Action Bot'
-          git config --global user.email 'action@github.com'
-          git add .
-          git commit -m "Actualización automática: $(date +'%Y-%m-%d %H:%M')" || exit 0
+          python md_propietarios.py
+          
+      - name: Subir cambios a GitHub
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add datos/maestros/md_propietarios.xlsx
+          git commit -m "🤖 [BOT] Maestro de Propietarios actualizado (TRUNCATE)" || echo "No hay cambios para hacer commit"
           git push
