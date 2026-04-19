@@ -2,8 +2,8 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    # Dispara a las 05:00 UTC y a las 06:00 UTC
-    - cron: '0 5,6 * * *'
+    # Se ejecuta todos los días a las 23:00 UTC (01:00 AM hora española de verano)
+    - cron: '0 23 * * *'
   workflow_dispatch: # Permite ejecución manual por si acaso
 
 jobs:
@@ -19,48 +19,20 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 🕒 Comprobar Horario de España (Verano/Invierno)
-        id: time_check
-        run: |
-          # Obtenemos la hora actual en la zona horaria de España
-          HORA_ESP=$(TZ='Europe/Madrid' date +%H)
-          echo "La hora actual en España es: $HORA_ESP:00"
-          
-          # Si son las 07:00, creamos una variable que autorice la ejecución
-          if [ "$HORA_ESP" == "07" ]; then
-            echo "ejecutar=true" >> $GITHUB_ENV
-          else
-            echo "ejecutar=false" >> $GITHUB_ENV
-            echo "⚠️ Saltando ejecución porque no son las 07:00 AM local."
-          fi
-
       - name: Instalar librerías
-        # Solo instala si la variable ejecutar es true
-        if: env.ejecutar == 'true'
         run: |
           pip install pandas openpyxl requests python-dotenv
 
-      - name: Validar si la temporada sigue activa
-        if: env.ejecutar == 'true'
-        run: python scripts/validador_temporada.py
-
-      - name: Ejecutar Extracción de Datos Maestros y Hechos
-        # Solo ejecuta Python si la variable es true
-        if: env.ejecutar == 'true'
+      - name: Ejecutar Extracción de Datos Maestros
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: |
-          python scripts/md_propietarios.py
-          python scripts/md_jugadores.py
-          python scripts/md_equipos.py
-          python scripts/md_partidos.py
-          python scripts/td_jugadores.py
+          python md_propietarios.py
           
       - name: Subir cambios a GitHub
-        if: env.ejecutar == 'true'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add datos/
-          git commit -m "🤖 [BOT] Extracción diaria completada (07:00 AM España)" || echo "No hay cambios para hacer commit"
+          git add datos/maestros/md_propietarios.xlsx
+          git commit -m "🤖 [BOT] Maestro de Propietarios actualizado (TRUNCATE)" || echo "No hay cambios para hacer commit"
           git push
