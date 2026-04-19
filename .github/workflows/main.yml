@@ -2,70 +2,58 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    # Dispara a las 05:00 UTC y a las 06:00 UTC para cubrir el horario de invierno y verano
     - cron: '0 5,6 * * *'
-  workflow_dispatch: # Permite la ejecución manual desde la web de GitHub
+  workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Descargar repositorio
+      - name: Descargar repositorio
         uses: actions/checkout@v3
 
-      - name: 🐍 Configurar Python
+      - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: 🕒 Comprobar Horario de España (Verano/Invierno)
+      - name: 🕒 Comprobar Horario de España
         id: time_check
         run: |
           HORA_ESP=$(TZ='Europe/Madrid' date +%H)
-          echo "La hora actual en España es: $HORA_ESP:00"
-          
           if [ "$HORA_ESP" == "07" ]; then
             echo "hora_correcta=true" >> $GITHUB_OUTPUT
           else
             echo "hora_correcta=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Saltando ejecución porque no son las 07:00 AM local."
           fi
 
-      - name: 🛡️ Validar si la Temporada está Activa
+      - name: 🛡️ Validar Temporada Activa
         id: validador
-        # Solo se ejecuta si son las 07:00 en España
         if: steps.time_check.outputs.hora_correcta == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: python scripts/validador_temporada.py
 
-      - name: 📦 Instalar librerías
-        # Solo se instala si la liga está activa
+      - name: Instalar librerías
         if: steps.validador.outputs.activa == 'true'
         run: pip install pandas openpyxl requests python-dotenv
 
-      - name: 🚀 Ejecutar Extracción Completa (ETL)
+      - name: Ejecutar Extracción Completa
         if: steps.validador.outputs.activa == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: |
-          # 1. Maestros (Dimensiones)
           python scripts/md_propietarios.py
           python scripts/md_jugadores.py
           python scripts/md_equipos.py
           python scripts/md_partidos.py
-          
-          # 2. Hechos (Rendimiento, Mercado y Economía)
-          python scripts/td_rendimiento.py
           python scripts/td_jugadores.py
-          python scripts/td_admin.py
           
-      - name: 💾 Subir cambios a GitHub
+      - name: Subir cambios a GitHub
         if: steps.validador.outputs.activa == 'true'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add datos/
-          git commit -m "🤖 [BOT] Extracción diaria completada" || echo "No hay cambios para hacer commit"
+          git commit -m "🤖 [BOT] Carga diaria automatizada" || echo "No hay cambios"
           git push
