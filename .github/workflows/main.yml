@@ -2,37 +2,70 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    # Se ejecuta todos los días a las 23:00 UTC (01:00 AM hora española de verano)
-    - cron: '0 23 * * *'
-  workflow_dispatch: # Permite ejecución manual por si acaso
+    # Dispara a las 05:00 UTC y a las 06:00 UTC para cubrir el horario de invierno y verano
+    - cron: '0 5,6 * * *'
+  workflow_dispatch: # Permite la ejecución manual desde la web de GitHub
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Descargar repositorio
+      - name: 📥 Descargar repositorio
         uses: actions/checkout@v3
 
-      - name: Configurar Python
+      - name: 🐍 Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Instalar librerías
+      - name: 🕒 Comprobar Horario de España (Verano/Invierno)
+        id: time_check
         run: |
-          pip install pandas openpyxl requests python-dotenv
+          HORA_ESP=$(TZ='Europe/Madrid' date +%H)
+          echo "La hora actual en España es: $HORA_ESP:00"
+          
+          if [ "$HORA_ESP" == "07" ]; then
+            echo "hora_correcta=true" >> $GITHUB_OUTPUT
+          else
+            echo "hora_correcta=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Saltando ejecución porque no son las 07:00 AM local."
+          fi
 
-      - name: Ejecutar Extracción de Datos Maestros
+      - name: 🛡️ Validar si la Temporada está Activa
+        id: validador
+        # Solo se ejecuta si son las 07:00 en España
+        if: steps.time_check.outputs.hora_correcta == 'true'
+        env:
+          FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
+        run: python scripts/validador_temporada.py
+
+      - name: 📦 Instalar librerías
+        # Solo se instala si la liga está activa
+        if: steps.validador.outputs.activa == 'true'
+        run: pip install pandas openpyxl requests python-dotenv
+
+      - name: 🚀 Ejecutar Extracción Completa (ETL)
+        if: steps.validador.outputs.activa == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: |
-          python md_propietarios.py
+          # 1. Maestros (Dimensiones)
+          python scripts/md_propietarios.py
+          python scripts/md_jugadores.py
+          python scripts/md_equipos.py
+          python scripts/md_partidos.py
           
-      - name: Subir cambios a GitHub
+          # 2. Hechos (Rendimiento, Mercado y Economía)
+          python scripts/td_rendimiento.py
+          python scripts/td_jugadores.py
+          python scripts/td_admin.py
+          
+      - name: 💾 Subir cambios a GitHub
+        if: steps.validador.outputs.activa == 'true'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add datos/maestros/md_propietarios.xlsx
-          git commit -m "🤖 [BOT] Maestro de Propietarios actualizado (TRUNCATE)" || echo "No hay cambios para hacer commit"
+          git add datos/
+          git commit -m "🤖 [BOT] Extracción diaria completada" || echo "No hay cambios para hacer commit"
           git push
