@@ -1,38 +1,66 @@
-name: Actualizar Datos Futmondo
+name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Se ejecuta todos los días a las 08:00 AM UTC
-  workflow_dispatch:     # Permite ejecutarlo a mano cuando quieras
+    # Dispara a las 05:00 UTC y a las 06:00 UTC
+    - cron: '0 5,6 * * *'
+  workflow_dispatch: # Permite ejecución manual por si acaso
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Permiso para que el bot pueda subir el Excel al repo
 
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+      - name: Descargar repositorio
+        uses: actions/checkout@v3
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Instalar librerías
+      - name: 🕒 Comprobar Horario de España (Verano/Invierno)
+        id: time_check
         run: |
-          pip install requests pandas openpyxl
+          # Obtenemos la hora actual en la zona horaria de España
+          HORA_ESP=$(TZ='Europe/Madrid' date +%H)
+          echo "La hora actual en España es: $HORA_ESP:00"
+          
+          # Si son las 07:00, creamos una variable que autorice la ejecución
+          if [ "$HORA_ESP" == "07" ]; then
+            echo "ejecutar=true" >> $GITHUB_ENV
+          else
+            echo "ejecutar=false" >> $GITHUB_ENV
+            echo "⚠️ Saltando ejecución porque no son las 07:00 AM local."
+          fi
 
-      - name: Ejecutar Scripts
+      - name: Instalar librerías
+        # Solo instala si la variable ejecutar es true
+        if: env.ejecutar == 'true'
+        run: |
+          pip install pandas openpyxl requests python-dotenv
+
+      - name: Validar si la temporada sigue activa
+        if: env.ejecutar == 'true'
+        run: python scripts/validador_temporada.py
+
+      - name: Ejecutar Extracción de Datos Maestros y Hechos
+        # Solo ejecuta Python si la variable es true
+        if: env.ejecutar == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
-        run: python futmondo.py
-
-      - name: Guardar cambios en el repositorio
         run: |
-          git config --global user.name 'GitHub Action Bot'
-          git config --global user.email 'action@github.com'
-          git add .
-          git commit -m "Actualización automática: $(date +'%Y-%m-%d %H:%M')" || exit 0
+          python scripts/md_propietarios.py
+          python scripts/md_jugadores.py
+          python scripts/md_equipos.py
+          python scripts/md_partidos.py
+          python scripts/td_jugadores.py
+          
+      - name: Subir cambios a GitHub
+        if: env.ejecutar == 'true'
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add datos/
+          git commit -m "🤖 [BOT] Extracción diaria completada (07:00 AM España)" || echo "No hay cambios para hacer commit"
           git push
