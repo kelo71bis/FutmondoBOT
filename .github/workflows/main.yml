@@ -3,9 +3,8 @@ name: Futmondo BOT - Extracción Diaria
 on:
   schedule:
     - cron: '0 5,6 * * *'
-  workflow_dispatch: # Permite la ejecución manual
+  workflow_dispatch: 
 
-# ⚠️ Permisos necesarios para que el bot pueda escribir (git push) en tu repositorio
 permissions:
   contents: write
 
@@ -15,10 +14,10 @@ jobs:
 
     steps:
       - name: 📥 Descargar repositorio
-        uses: actions/checkout@v4 # ⬆️ ACTUALIZADO A v4 para evitar warnings de Node.js
+        uses: actions/checkout@v4
 
       - name: 🐍 Configurar Python
-        uses: actions/setup-python@v5 # ⬆️ ACTUALIZADO A v5 para evitar warnings de Node.js
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -29,14 +28,18 @@ jobs:
           echo "La hora actual en España es: $HORA_ESP:00"
           echo "Evento disparador: ${{ github.event_name }}"
           
-          # Si le has dado al botón manual, O si son las 07:00 AM, damos luz verde
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ]; then
             echo "hora_correcta=true" >> $GITHUB_OUTPUT
-            echo "🟢 Ejecución autorizada (Manual o Horario Correcto)."
+            echo "🟢 Ejecución autorizada."
           else
             echo "hora_correcta=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Saltando ejecución automática porque no son las 07:00 AM local."
+            echo "⚠️ Saltando ejecución automática."
           fi
+
+      - name: 📦 Instalar librerías
+        # Lo movemos AQUÍ, y depende solo de la hora
+        if: steps.time_check.outputs.hora_correcta == 'true'
+        run: pip install pandas openpyxl requests python-dotenv
 
       - name: 🛡️ Validar si la Temporada está Activa
         id: validador
@@ -45,11 +48,8 @@ jobs:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: python scripts/validador_temporada.py
 
-      - name: 📦 Instalar librerías
-        if: steps.validador.outputs.activa == 'true'
-        run: pip install pandas openpyxl requests python-dotenv
-
       - name: 🚀 Ejecutar Extracción Completa (ETL)
+        # Esto ya depende de si el validador ha dado el OK
         if: steps.validador.outputs.activa == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
