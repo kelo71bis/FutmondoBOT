@@ -61,6 +61,8 @@ jobs:
           python scripts/td_rendimiento.py
           python scripts/td_jugadores.py
           python scripts/td_admin.py
+          python scripts/td_puntos_jugadores.py
+          python scripts/crear_vista_global.py
           
       - name: 💾 Subir cambios a GitHub
         if: steps.validador.outputs.activa == 'true'

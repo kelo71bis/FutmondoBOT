@@ -20,8 +20,12 @@ LEAGUE_ID = "504e4f584d8bec9a67000079"
 CHAMPIONSHIP_ID = "5f452f5d3e7c0d5ae0fbe924"
 USER_ID = "5dcac7a682052f531c77f140"
 
-def generar_fact_puntos():
-    print("🧠 Construyendo Fact_Puntos_Jugadores desde la API de Alineaciones...")
+# 🛑 BOTÓN ROJO: Ponlo en True para que descargue TODO de cero (ideal para arreglar errores)
+# Una vez lo hayas ejecutado y arreglado, puedes volver a ponerlo en False para el día a día.
+FORZAR_RECARGA_COMPLETA = False 
+
+def generar_td_puntos():
+    print("🧠 Construyendo td_puntos_jugadores desde la API de Alineaciones...")
     
     # 1. Obtener los IDs de las jornadas cerradas
     print("   📅 Obteniendo calendario de jornadas...")
@@ -60,35 +64,35 @@ def generar_fact_puntos():
         teams = res_teams.json().get("answer", {}).get("teams", [])
         propietarios = [t.get("teamid") for t in teams]
 
-    # 3. Lógica Delta: Comprobar qué tenemos ya guardado
+    # 3. Lógica Delta o Recarga Completa
     temporada_limpia = TEMPORADA_ACTUAL.replace("/", "_")
-    ruta_fact = f"datos/vistas_negocio/Fact_Puntos_Jugadores_{temporada_limpia}.xlsx"
-    os.makedirs("datos/vistas_negocio", exist_ok=True)
+    ruta_td = f"datos/hechos/td_puntos_jugadores_{temporada_limpia}.xlsx"
+    os.makedirs("datos/hechos", exist_ok=True)
     
-    if os.path.exists(ruta_fact):
-        df_existente = pd.read_excel(ruta_fact)
-        # Creamos una clave única temporal para saber qué Jornada-Propietario ya tenemos
+    if os.path.exists(ruta_td) and not FORZAR_RECARGA_COMPLETA:
+        df_existente = pd.read_excel(ruta_td)
         df_existente['clave_delta'] = df_existente['jornada'].astype(str) + "_" + df_existente['id_propietario']
         combinaciones_procesadas = df_existente['clave_delta'].unique().tolist()
         df_existente = df_existente.drop(columns=['clave_delta'])
     else:
+        if FORZAR_RECARGA_COMPLETA:
+            print("   ⚠️ RECARGA COMPLETA ACTIVADA: Ignorando datos guardados. Se descargará todo de cero.")
         df_existente = pd.DataFrame()
         combinaciones_procesadas = []
 
-    filas_fact = []
+    filas_td = []
     total_combinaciones = len(jornadas_cerradas) * len(propietarios)
     contador = 0
 
     print(f"🔍 Escaneando alineaciones históricas ({total_combinaciones} posibles combinaciones)...")
 
-    # 4. Iterar por cada jornada y cada usuario
     for jor in jornadas_cerradas:
         for prop in propietarios:
             contador += 1
             clave_actual = f"{jor['numero']}_{prop}"
             
             if clave_actual in combinaciones_procesadas:
-                continue # Nos saltamos lo que ya tenemos guardado
+                continue 
                 
             print(f"   ⏳ Extrayendo J{jor['numero']} - Equipo {prop} ({contador}/{total_combinaciones})...", end="\r")
             
@@ -107,7 +111,6 @@ def generar_fact_puntos():
                     jugadores_alineados = 0
                     
                     for jug in jugadores:
-                        # En Futmondo, los 11 titulares tienen position de 1 a 11. Los suplentes tienen > 11.
                         pos_alineacion = jug.get("position", 99)
                         es_titular = "Sí" if pos_alineacion <= 11 else "No"
                         
@@ -116,7 +119,7 @@ def generar_fact_puntos():
                             
                         detalles = jug.get("detailedPoints", {}).get("data", {})
                         
-                        filas_fact.append({
+                        filas_td.append({
                             "temporada": TEMPORADA_ACTUAL,
                             "jornada": jor["numero"],
                             "id_propietario": prop,
@@ -131,10 +134,10 @@ def generar_fact_puntos():
                             "rojas": detalles.get("red_card", 0)
                         })
                         
-                    # ⚠️ LÓGICA DEL -5 (HUECO VACÍO)
+                    # LÓGICA DEL -5 (HUECO VACÍO)
                     huecos_libres = 11 - jugadores_alineados
                     for _ in range(huecos_libres):
-                        filas_fact.append({
+                        filas_td.append({
                             "temporada": TEMPORADA_ACTUAL,
                             "jornada": jor["numero"],
                             "id_propietario": prop,
@@ -154,10 +157,10 @@ def generar_fact_puntos():
                 
             time.sleep(0.5)
 
-    print("\n✅ Extracción completada. Guardando Fact Table...")
+    print("\n✅ Extracción completada. Guardando tabla de hechos...")
     
-    if filas_fact:
-        df_nuevos = pd.DataFrame(filas_fact)
+    if filas_td:
+        df_nuevos = pd.DataFrame(filas_td)
         
         if not df_existente.empty:
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
@@ -167,10 +170,10 @@ def generar_fact_puntos():
         columnas_ordenadas = ["temporada", "jornada", "id_propietario", "id_jugador", "posicion", "titular", "puntos", "minutos", "goles", "asistencias", "amarillas", "rojas"]
         df_final = df_final[columnas_ordenadas]
             
-        df_final.to_excel(ruta_fact, index=False)
-        print(f"💾 ¡Fact Table guardada con {len(df_nuevos)} registros nuevos!")
+        df_final.to_excel(ruta_td, index=False)
+        print(f"💾 ¡Datos guardados en datos/hechos/ con {len(df_final)} registros totales!")
     else:
         print("✅ No había datos nuevos que guardar.")
 
 if __name__ == "__main__":
-    generar_fact_puntos()
+    generar_td_puntos()
