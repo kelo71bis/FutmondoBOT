@@ -28,7 +28,8 @@ jobs:
           echo "La hora actual en España es: $HORA_ESP:00"
           echo "Evento disparador: ${{ github.event_name }}"
           
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ]; then
+          # Permitimos ejecución manual, o si son las 07 o las 08
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ] || [ "$HORA_ESP" == "08" ]; then
             echo "hora_correcta=true" >> $GITHUB_OUTPUT
             echo "🟢 Ejecución autorizada."
           else
