@@ -2,7 +2,7 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    - cron: '30 18 * * *' # ⏱️ 18:25 UTC = 20:25 en España
+    - cron: '0 5,6 * * *' # Se ejecuta a las 07:00 y 08:00 (Hora de España)
   workflow_dispatch: 
 
 permissions:
@@ -21,15 +21,14 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 🕒 Comprobar Horario (PRUEBA 20:25)
+      - name: 🕒 Comprobar Horario (o Ejecución Manual)
         id: time_check
         run: |
           HORA_ESP=$(TZ='Europe/Madrid' date +%H)
           echo "La hora actual en España es: $HORA_ESP:00"
-          echo "Evento disparador: ${{ github.event_name }}"
           
-          # Permitimos ejecución manual, o si son las 07, 08 o 20 (PARA ESTA PRUEBA)
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ] || [ "$HORA_ESP" == "08" ] || [ "$HORA_ESP" == "20" ]; then
+          # Permitimos ejecución manual, o si son las 07 o las 08 de la mañana
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ] || [ "$HORA_ESP" == "08" ]; then
             echo "hora_correcta=true" >> $GITHUB_OUTPUT
             echo "🟢 Ejecución autorizada."
           else
@@ -49,7 +48,7 @@ jobs:
         run: python scripts/validador_temporada.py
 
       - name: 🚀 Ejecutar Extracción Completa (ETL)
-        # 🛑 HEMOS QUITADO LA RESTRICCIÓN DEL VALIDADOR AQUÍ
+        # 🛑 HEMOS QUITADO EL IF DEL VALIDADOR PARA ASEGURAR EL HISTÓRICO ECONÓMICO
         if: steps.time_check.outputs.hora_correcta == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
@@ -65,7 +64,7 @@ jobs:
           python scripts/crear_vista_global.py
           
       - name: 💾 Subir cambios a GitHub
-        # 🛑 HEMOS QUITADO LA RESTRICCIÓN DEL VALIDADOR AQUÍ
+        # 🛑 HEMOS QUITADO EL IF DEL VALIDADOR AQUÍ TAMBIÉN
         if: steps.time_check.outputs.hora_correcta == 'true'
         run: |
           git config --global user.name "github-actions"
