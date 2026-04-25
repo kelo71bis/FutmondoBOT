@@ -45,7 +45,7 @@ jobs:
         run: python scripts/validador_temporada.py
 
       - name: 🚀 Ejecutar Extracción Completa (ETL)
-        if: steps.validador.outputs.activa == 'true'
+        # 🛑 HEMOS QUITADO EL IF PARA QUE SE EJECUTE SÍ O SÍ
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: |
@@ -60,7 +60,7 @@ jobs:
           python scripts/crear_vista_global.py
           
       - name: 💾 Subir cambios a GitHub
-        if: steps.validador.outputs.activa == 'true'
+        # 🛑 HEMOS QUITADO EL IF AQUÍ TAMBIÉN
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
