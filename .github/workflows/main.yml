@@ -2,7 +2,7 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    - cron: '0 5,6 * * *'
+    - cron: '*/5 * * * *' # ⏱️ PARA PRUEBAS: Se ejecuta cada 5 minutos
   workflow_dispatch: 
 
 permissions:
@@ -21,24 +21,19 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 🕒 Comprobar Horario (o Ejecución Manual)
+      - name: 🕒 Comprobar Horario (MODO PRUEBA ACTIVADO)
         id: time_check
         run: |
-          HORA_ESP=$(TZ='Europe/Madrid' date +%H)
-          echo "La hora actual en España es: $HORA_ESP:00"
+          HORA_ESP=$(TZ='Europe/Madrid' date +%H:%M)
+          echo "La hora actual en España es: $HORA_ESP"
           echo "Evento disparador: ${{ github.event_name }}"
           
-          # Permitimos ejecución manual, o si son las 07 o las 08
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ] || [ "$HORA_ESP" == "08" ]; then
-            echo "hora_correcta=true" >> $GITHUB_OUTPUT
-            echo "🟢 Ejecución autorizada."
-          else
-            echo "hora_correcta=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Saltando ejecución automática."
-          fi
+          # 🛑 CANDADO DESACTIVADO PARA LA PRUEBA
+          # Forzamos que siempre devuelva 'true' para que no bloquee la ejecución de tarde
+          echo "hora_correcta=true" >> $GITHUB_OUTPUT
+          echo "🟢 Ejecución de prueba autorizada."
 
       - name: 📦 Instalar librerías
-        # Lo movemos AQUÍ, y depende solo de la hora
         if: steps.time_check.outputs.hora_correcta == 'true'
         run: pip install pandas openpyxl requests python-dotenv
 
@@ -50,7 +45,6 @@ jobs:
         run: python scripts/validador_temporada.py
 
       - name: 🚀 Ejecutar Extracción Completa (ETL)
-        # Esto ya depende de si el validador ha dado el OK
         if: steps.validador.outputs.activa == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
@@ -71,5 +65,5 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add datos/
-          git commit -m "🤖 [BOT] Extracción completada" || echo "No hay cambios para hacer commit"
+          git commit -m "🤖 [BOT] Extracción de PRUEBA completada" || echo "No hay cambios para hacer commit"
           git push
