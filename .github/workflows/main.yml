@@ -2,7 +2,7 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    - cron: '25 18 * * *' # ⏱️ 18:25 UTC = 20:25 en España
+    - cron: '30 18 * * *' # ⏱️ 18:25 UTC = 20:25 en España
   workflow_dispatch: 
 
 permissions:
