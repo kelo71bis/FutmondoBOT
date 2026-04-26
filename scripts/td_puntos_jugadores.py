@@ -134,14 +134,14 @@ def generar_td_puntos():
                             "rojas": detalles.get("red_card", 0)
                         })
                         
-                    # LÓGICA DEL -5 (HUECO VACÍO)
+                    # LÓGICA DEL -5 (HUECO VACÍO CORREGIDO PARA QUE NO SE FUSIONEN)
                     huecos_libres = 11 - jugadores_alineados
-                    for _ in range(huecos_libres):
+                    for i in range(huecos_libres):
                         filas_td.append({
                             "temporada": TEMPORADA_ACTUAL,
                             "jornada": jor["numero"],
                             "id_propietario": prop,
-                            "id_jugador": "HUECO_VACIO",
+                            "id_jugador": f"HUECO_VACIO_{i+1}", # <-- Diferenciamos cada hueco
                             "posicion": "Ninguna",
                             "titular": "Sí",
                             "puntos": -5,
@@ -167,13 +167,29 @@ def generar_td_puntos():
         else:
             df_final = df_nuevos
             
+        # --- 🛡️ EL ESCUDO ANTI-DUPLICADOS ---
+        filas_antes = len(df_final)
+        df_final = df_final.drop_duplicates(subset=['temporada', 'jornada', 'id_propietario', 'id_jugador'], keep='last')
+        filas_despues = len(df_final)
+        
+        if filas_antes != filas_despues:
+            print(f"   🧹 Se han limpiado automáticamente {filas_antes - filas_despues} registros duplicados históricos.")
+            
         columnas_ordenadas = ["temporada", "jornada", "id_propietario", "id_jugador", "posicion", "titular", "puntos", "minutos", "goles", "asistencias", "amarillas", "rojas"]
         df_final = df_final[columnas_ordenadas]
             
         df_final.to_excel(ruta_td, index=False)
         print(f"💾 ¡Datos guardados en datos/hechos/ con {len(df_final)} registros totales!")
     else:
-        print("✅ No había datos nuevos que guardar.")
+        # Aunque no haya datos nuevos, pasamos la escoba al Excel existente por si acaso
+        if not df_existente.empty:
+            filas_antes = len(df_existente)
+            df_existente = df_existente.drop_duplicates(subset=['temporada', 'jornada', 'id_propietario', 'id_jugador'], keep='last')
+            filas_despues = len(df_existente)
+            if filas_antes != filas_despues:
+                df_existente.to_excel(ruta_td, index=False)
+                print(f"🧹 Se aprovechó para limpiar {filas_antes - filas_despues} duplicados antiguos.")
+        print("✅ No había datos de jornadas nuevas que descargar.")
 
 if __name__ == "__main__":
     generar_td_puntos()
