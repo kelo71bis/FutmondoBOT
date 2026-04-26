@@ -2,7 +2,7 @@ name: Futmondo BOT - Extracción Diaria
 
 on:
   schedule:
-    - cron: '0 5,6 * * *' # Se ejecuta a las 07:00 y 08:00 (Hora de España)
+    - cron: '0 5,6 * * *' # 07:00 y 08:00 hora España
   workflow_dispatch: 
 
 permissions:
@@ -21,38 +21,14 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 🕒 Comprobar Horario (o Ejecución Manual)
-        id: time_check
-        run: |
-          HORA_ESP=$(TZ='Europe/Madrid' date +%H)
-          echo "La hora actual en España es: $HORA_ESP:00"
-          
-          # Permitimos ejecución manual, o si son las 07 o las 08 de la mañana
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "$HORA_ESP" == "07" ] || [ "$HORA_ESP" == "08" ]; then
-            echo "hora_correcta=true" >> $GITHUB_OUTPUT
-            echo "🟢 Ejecución autorizada."
-          else
-            echo "hora_correcta=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Saltando ejecución automática."
-          fi
-
       - name: 📦 Instalar librerías
-        if: steps.time_check.outputs.hora_correcta == 'true'
         run: pip install pandas openpyxl requests python-dotenv
 
-      - name: 🛡️ Validar si la Temporada está Activa
-        id: validador
-        if: steps.time_check.outputs.hora_correcta == 'true'
-        env:
-          FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
-        run: python scripts/validador_temporada.py
-
       - name: 🚀 Ejecutar Extracción Completa (ETL)
-        # 🛑 HEMOS QUITADO EL IF DEL VALIDADOR PARA ASEGURAR EL HISTÓRICO ECONÓMICO
-        if: steps.time_check.outputs.hora_correcta == 'true'
         env:
           FUTMONDO_TOKEN: ${{ secrets.FUTMONDO_TOKEN }}
         run: |
+          # Se ejecutan todos los scripts uno tras otro
           python scripts/md_propietarios.py
           python scripts/md_jugadores.py
           python scripts/md_equipos.py
@@ -64,11 +40,9 @@ jobs:
           python scripts/crear_vista_global.py
           
       - name: 💾 Subir cambios a GitHub
-        # 🛑 HEMOS QUITADO EL IF DEL VALIDADOR AQUÍ TAMBIÉN
-        if: steps.time_check.outputs.hora_correcta == 'true'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add datos/
-          git commit -m "🤖 [BOT] Extracción completada" || echo "No hay cambios para hacer commit"
+          git add .
+          git commit -m "🤖 [BOT] Actualización automática diaria" || echo "Sin cambios"
           git push
