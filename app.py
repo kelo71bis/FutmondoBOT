@@ -84,18 +84,16 @@ if df is not None:
             st.line_chart(df_grafica, height=420)
 
     # ==========================================
-    # PANTALLA 2: SALÓN DE LA FAMA (¡REDISEÑADO!)
+    # PANTALLA 2: SALÓN DE LA FAMA
     # ==========================================
     elif menu == "🏆 Salón de la Fama":
         st.title("🏆 El Salón de la Fama")
         st.write("El Top 10 histórico de las mejores y peores jornadas de la Liga Santanguissa.")
         st.markdown("---")
         
-        # Filtros de datos
         df_records = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26')) & (df['Temporada'] != '2024/25')]
         df_desastres = df_records[df_records['Puntos'] > 0]
         
-        # Calcular los Top 10
         top10_mejores = df_records.nlargest(10, 'Puntos').reset_index(drop=True)
         top10_peores = df_desastres.nsmallest(10, 'Puntos').reset_index(drop=True)
         
@@ -104,13 +102,10 @@ if df is not None:
         # 🟢 TOP 10 MEJORES
         with col1:
             st.subheader("🚀 Las Mejores Exhibiciones")
-            
-            # TOP 1 (Grande)
             top1 = top10_mejores.iloc[0]
             st.success(f"🥇 **{top1['Mánager']}**")
             st.metric(label=f"Jornada {int(top1['Jornada'])} ({top1['Temporada']})", value=f"{top1['Puntos']} pts")
             
-            # TOP 2 y 3 (Medianos)
             c_top2, c_top3 = st.columns(2)
             with c_top2:
                 top2 = top10_mejores.iloc[1]
@@ -121,7 +116,6 @@ if df is not None:
                 st.info(f"🥉 **{top3['Mánager']}**")
                 st.markdown(f"**{top3['Puntos']} pts** (J{int(top3['Jornada'])} - {top3['Temporada']})")
                 
-            # TOP 4 al 10 (Tabla normal)
             st.caption("Puestos del 4 al 10:")
             df_resto_mejores = top10_mejores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
             df_resto_mejores.index = range(4, 11)
@@ -130,14 +124,11 @@ if df is not None:
         # 🔴 TOP 10 PEORES
         with col2:
             st.subheader("💩 Los Mayores Desastres")
-            
             if not top10_peores.empty:
-                # TOP 1 (Grande)
                 bot1 = top10_peores.iloc[0]
                 st.error(f"🥇 **{bot1['Mánager']}**")
                 st.metric(label=f"Jornada {int(bot1['Jornada'])} ({bot1['Temporada']})", value=f"{bot1['Puntos']} pts")
                 
-                # TOP 2 y 3 (Medianos)
                 c_bot2, c_bot3 = st.columns(2)
                 with c_bot2:
                     bot2 = top10_peores.iloc[1]
@@ -148,22 +139,47 @@ if df is not None:
                     st.warning(f"🥉 **{bot3['Mánager']}**")
                     st.markdown(f"**{bot3['Puntos']} pts** (J{int(bot3['Jornada'])} - {bot3['Temporada']})")
                     
-                # TOP 4 al 10 (Tabla normal)
                 st.caption("Puestos del 4 al 10:")
                 df_resto_peores = top10_peores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
                 df_resto_peores.index = range(4, 11)
                 st.dataframe(df_resto_peores, use_container_width=True)
-            
             st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
 
+        # ---------------------------------------------------------
+        # 🏅 NUEVO MEDALLERO (CIELO E INFIERNO)
+        # ---------------------------------------------------------
         st.markdown("---")
-        st.subheader("🏅 El Medallero de Jornadas (MVPs)")
-        idx_mvps = df_records.groupby(['Temporada', 'Jornada'])['Puntos'].idxmax()
-        df_mvps = df_records.loc[idx_mvps]
-        conteo_mvps = df_mvps['Mánager'].value_counts().reset_index()
-        conteo_mvps.columns = ['Mánager', 'Victorias de Jornada']
-        conteo_mvps.index = conteo_mvps.index + 1
-        st.dataframe(conteo_mvps, use_container_width=True)
+        st.subheader("🏅 El Medallero de Jornadas (Cielo e Infierno)")
+        st.write("¿Quién domina las jornadas y quién se arrastra por el fango? *(Excluida temporada 2024/25)*")
+        
+        # Copia segura para operar
+        df_medallero = df_records.copy()
+        
+        # Clasificar a los mánagers dentro de cada jornada
+        # Rank=1 en Mejor significa que sacó la máxima puntuación
+        # Rank=1 en Peor significa que sacó la mínima puntuación
+        df_medallero['Rank_Mejor'] = df_medallero.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
+        df_medallero['Rank_Peor'] = df_medallero.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=True)
+        
+        # Contar cuántas veces ha quedado cada uno en estas posiciones
+        df_oros = df_medallero[df_medallero['Rank_Mejor'] == 1].groupby('Mánager').size()
+        df_platas = df_medallero[df_medallero['Rank_Mejor'] == 2].groupby('Mánager').size()
+        df_penultimos = df_medallero[df_medallero['Rank_Peor'] == 2].groupby('Mánager').size()
+        df_ultimos = df_medallero[df_medallero['Rank_Peor'] == 1].groupby('Mánager').size()
+        
+        # Unir todo en un solo DataFrame
+        tabla_medallas = pd.DataFrame({
+            '🥇 1º (Oros)': df_oros,
+            '🥈 2º (Platas)': df_platas,
+            '⚠️ Penúltimos': df_penultimos,
+            '💩 Últimos': df_ultimos
+        }).fillna(0).astype(int)
+        
+        # Ordenar la tabla: Primero los que tienen más Oros, a igualdad, el que tenga más Platas
+        tabla_medallas = tabla_medallas.sort_values(by=['🥇 1º (Oros)', '🥈 2º (Platas)'], ascending=[False, False]).reset_index()
+        tabla_medallas.index = tabla_medallas.index + 1
+        
+        st.dataframe(tabla_medallas, use_container_width=True)
 
     # ==========================================
     # PANTALLA 3: PALMARÉS HISTÓRICO
@@ -226,11 +242,4 @@ if df is not None:
             tabla_titulos = tabla_titulos.sort_values(by=['Total Títulos', 'Ligas'], ascending=[False, False]).reset_index(drop=True)
             tabla_titulos.index = tabla_titulos.index + 1
             
-            st.dataframe(tabla_titulos[['Mánager', 'Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
-
-    elif menu in ["👤 Perfiles (Próximamente)", "⚔️ Cara a Cara (Próximamente)"]:
-        st.title(menu)
-        st.info("🚧 Estamos trabajando en esta sección. ¡Pronto habrá más salseo!")
-
-else:
-    st.error("❌ Faltan los archivos de datos globales.")
+            st.dataframe
