@@ -64,72 +64,90 @@ if df is not None:
             temporadas = df['Temporada'].unique().tolist()
             temporada_sel = st.selectbox("📅 Selecciona la Temporada", temporadas, index=len(temporadas)-1)
         
-        # Filtramos la temporada y usamos .copy() para poder añadir columnas nuevas sin avisos de Pandas
+        # Filtramos la temporada elegida
         df_temp = df[df['Temporada'] == temporada_sel].copy()
         
-        # 🧮 CALCULAMOS LA POSICIÓN JORNADA A JORNADA
-        df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
-        
-        jornada_maxima = int(df_temp['Jornada'].max())
-        
-        rango_jornadas = st.slider("🔍 Rango de Jornadas en Gráficas", 1, jornada_maxima, (1, jornada_maxima))
-        
-        col1, col2 = st.columns([1, 1.8])
-        with col1:
-            st.subheader(f"📊 Tabla (Jornada {jornada_maxima})")
-            df_clasif = df_temp[df_temp['Jornada'] == jornada_maxima].sort_values(by="Puntos_Acumulados", ascending=False)
+        # 🛡️ CONDICIÓN ESPECIAL: TEMPORADA 2024/25 (Muestra solo tabla)
+        if temporada_sel == "2024/25":
+            st.subheader("📊 Tabla Final (Temporada 2024/25)")
+            df_clasif = df_temp.sort_values(by="Puntos_Acumulados", ascending=False)
             df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
             df_mostrar.index = df_mostrar.index + 1 
             df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
-            st.dataframe(df_mostrar, use_container_width=True)
             
-        with col2:
-            st.subheader("📈 Análisis de Evolución")
+            col_tabla, col_info = st.columns([1, 1.8])
+            with col_tabla:
+                st.dataframe(df_mostrar, use_container_width=True)
+            with col_info:
+                st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas de evolución temporal por jornada no están habilitadas.")
+                
+        # 🚀 COMPORTAMIENTO NORMAL (Otras temporadas)
+        else:
+            # 🧮 CALCULAMOS AMBAS POSICIONES JORNADA A JORNADA
+            df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
+            df_temp['Posición_Jornada'] = df_temp.groupby('Jornada')['Puntos'].rank(method='min', ascending=False).astype(int)
             
-            # Filtramos los datos para el slider
-            df_temp_grafica = df_temp[(df_temp['Jornada'] >= rango_jornadas[0]) & (df_temp['Jornada'] <= rango_jornadas[1])]
+            jornada_maxima = int(df_temp['Jornada'].max())
+            rango_jornadas = st.slider("🔍 Rango de Jornadas en Gráficas", 1, jornada_maxima, (1, jornada_maxima))
             
-            # 🗂️ PESTAÑAS PARA LAS GRÁFICAS
-            tab_pos, tab_pts = st.tabs(["🎢 Evolución de Posición", "📈 Puntos Acumulados"])
-            
-            # GRÁFICA DE POSICIONES (EJE INVERTIDO Y BLOQUEADO CON ALTAIR)
-            with tab_pos:
-                # Contamos cuántos mánagers hay para fijar el límite del eje Y
+            col1, col2 = st.columns([1, 1.8])
+            with col1:
+                st.subheader(f"📊 Tabla (Jornada {jornada_maxima})")
+                df_clasif = df_temp[df_temp['Jornada'] == jornada_maxima].sort_values(by="Puntos_Acumulados", ascending=False)
+                df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
+                df_mostrar.index = df_mostrar.index + 1 
+                df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
+                st.dataframe(df_mostrar, use_container_width=True)
+                
+            with col2:
+                st.subheader("📈 Análisis de Evolución")
+                
+                # Filtramos los datos para el slider
+                df_temp_grafica = df_temp[(df_temp['Jornada'] >= rango_jornadas[0]) & (df_temp['Jornada'] <= rango_jornadas[1])]
+                
+                # 🗂️ LAS 3 PESTAÑAS DE ANÁLISIS
+                tab_pos, tab_pos_jor, tab_pts = st.tabs([
+                    "🎢 Evolución de Posición", 
+                    "🎯 Posición en la Jornada", 
+                    "📈 Puntos Acumulados"
+                ])
+                
+                # Configuración común para las gráficas de Altair
                 num_managers = df_temp['Mánager'].nunique()
-                # Creamos una lista con todos los números [1, 2, 3... hasta num_managers] para las etiquetas
                 lista_posiciones = list(range(1, num_managers + 1))
                 
-                grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                    x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                    y=alt.Y('Posición:Q', 
-                            scale=alt.Scale(domain=[num_managers, 1]), 
-                            title='Posición', 
-                            axis=alt.Axis(values=lista_posiciones, format='d', tickMinStep=1)), # <- Forzamos a pintar cada número
-                    color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                    tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
-                ).properties(height=420)
-                
-                st.altair_chart(grafica_posiciones, use_container_width=True)
-                
-            # GRÁFICA DE PUNTOS (CON ALTAIR Y LÍMITES DINÁMICOS)
-            with tab_pts:
-                # Calculamos el mínimo y máximo de puntos en el tramo seleccionado
-                min_pts = int(df_temp_grafica['Puntos_Acumulados'].min())
-                max_pts = int(df_temp_grafica['Puntos_Acumulados'].max())
-                
-                # Le damos un 5% de margen por arriba y por abajo (o un mínimo de 20 puntos si están muy empatados)
-                margen = max(20, int((max_pts - min_pts) * 0.05)) 
-                
-                grafica_puntos = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                    x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                    y=alt.Y('Puntos_Acumulados:Q', 
-                            scale=alt.Scale(domain=[min_pts - margen, max_pts + margen]), 
-                            title='Puntos Acumulados'),
-                    color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                    tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición'] # He añadido la posición al tooltip como extra
-                ).properties(height=420)
-                
-                st.altair_chart(grafica_puntos, use_container_width=True)
+                # PESTAÑA 1: EVOLUCIÓN DE POSICIÓN ACUMULADA
+                with tab_pos:
+                    grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                        y=alt.Y('Posición:Q', 
+                                scale=alt.Scale(domain=[num_managers, 1]), 
+                                title='Posición Acumulada', 
+                                axis=alt.Axis(values=lista_posiciones, format='d', tickMinStep=1)),
+                        color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                        tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
+                    ).properties(height=420)
+                    
+                    st.altair_chart(grafica_posiciones, use_container_width=True)
+                    
+                # PESTAÑA 2: POSICIÓN DE LA JORNADA AISLADA (¡NUEVA!)
+                with tab_pos_jor:
+                    grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                        y=alt.Y('Posición_Jornada:Q', 
+                                scale=alt.Scale(domain=[num_managers, 1]), 
+                                title='Posición en la Jornada', 
+                                axis=alt.Axis(values=lista_posiciones, format='d', tickMinStep=1)),
+                        color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                        tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
+                    ).properties(height=420)
+                    
+                    st.altair_chart(grafica_pos_jornada, use_container_width=True)
+                    
+                # PESTAÑA 3: GRÁFICA DE PUNTOS ACUMULADOS
+                with tab_pts:
+                    df_grafica_pts = df_temp_grafica.pivot(index='Jornada', columns='Mánager', values='Puntos_Acumulados')
+                    st.line_chart(df_grafica_pts, height=420)
 
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
@@ -177,4 +195,134 @@ if df is not None:
                             st.markdown(f"**{top2['Puntos']} pts** (J{int(top2['Jornada'])} - {top2['Temporada']})")
                     with c_top3:
                         if len(top10_mejores) > 2:
-                            top3 = top10_mejores.iloc
+                            top3 = top10_mejores.iloc[2]
+                            st.info(f"🥉 **{top3['Mánager']}**")
+                            st.markdown(f"**{top3['Puntos']} pts** (J{int(top3['Jornada'])} - {top3['Temporada']})")
+                        
+                    if len(top10_mejores) > 3:
+                        st.caption("Puestos del 4 al 10:")
+                        df_resto_mejores = top10_mejores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
+                        df_resto_mejores.index = range(4, 4 + len(df_resto_mejores))
+                        st.dataframe(df_resto_mejores, use_container_width=True)
+                
+            with col2:
+                st.subheader("💩 Los Mayores Desastres")
+                if not top10_peores.empty:
+                    bot1 = top10_peores.iloc[0]
+                    st.error(f"🥇 **{bot1['Mánager']}**")
+                    st.metric(label=f"Jornada {int(bot1['Jornada'])} ({bot1['Temporada']})", value=f"{bot1['Puntos']} pts")
+                    
+                    c_bot2, c_bot3 = st.columns(2)
+                    with c_bot2:
+                        if len(top10_peores) > 1:
+                            bot2 = top10_peores.iloc[1]
+                            st.warning(f"🥈 **{bot2['Mánager']}**")
+                            st.markdown(f"**{bot2['Puntos']} pts** (J{int(bot2['Jornada'])} - {bot2['Temporada']})")
+                    with c_bot3:
+                        if len(top10_peores) > 2:
+                            bot3 = top10_peores.iloc[2]
+                            st.warning(f"🥉 **{bot3['Mánager']}**")
+                            st.markdown(f"**{bot3['Puntos']} pts** (J{int(bot3['Jornada'])} - {bot3['Temporada']})")
+                        
+                    if len(top10_peores) > 3:
+                        st.caption("Puestos del 4 al 10:")
+                        df_resto_peores = top10_peores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
+                        df_resto_peores.index = range(4, 4 + len(df_resto_peores))
+                        st.dataframe(df_resto_peores, use_container_width=True)
+                st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
+
+        st.markdown("---")
+        st.subheader("🏅 El Medallero de Jornadas (Cielo e Infierno)")
+        st.write(f"Conteo de posiciones por jornada aplicando el filtro actual: **{temporada_sf_sel}**")
+        
+        if not df_records.empty:
+            df_medallero = df_records.copy()
+            
+            df_medallero['Rank_Mejor'] = df_medallero.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
+            df_medallero['Rank_Peor'] = df_medallero.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=True)
+            
+            df_oros = df_medallero[df_medallero['Rank_Mejor'] == 1].groupby('Mánager').size()
+            df_platas = df_medallero[df_medallero['Rank_Mejor'] == 2].groupby('Mánager').size()
+            df_penultimos = df_medallero[df_medallero['Rank_Peor'] == 2].groupby('Mánager').size()
+            df_ultimos = df_medallero[df_medallero['Rank_Peor'] == 1].groupby('Mánager').size()
+            
+            tabla_medallas = pd.DataFrame({
+                '🥇 1º (Oros)': df_oros,
+                '🥈 2º (Platas)': df_platas,
+                '⚠️ Penúltimos': df_penultimos,
+                '💩 Últimos': df_ultimos
+            }).fillna(0).astype(int)
+            
+            tabla_medallas = tabla_medallas.sort_values(by=['🥇 1º (Oros)', '🥈 2º (Platas)'], ascending=[False, False]).reset_index()
+            tabla_medallas.index = tabla_medallas.index + 1
+            st.dataframe(tabla_medallas, use_container_width=True)
+
+    # ==========================================
+    # PANTALLA 3: PALMARÉS HISTÓRICO
+    # ==========================================
+    elif menu == "🥇 Palmarés Histórico":
+        st.title("🥇 Vitrina de Trofeos")
+        st.markdown("---")
+        
+        col_liga, col_copa = st.columns(2)
+        
+        with col_liga:
+            st.subheader("🏆 Campeones de Liga")
+            if df_ligas is not None:
+                df_ligas_vista = df_ligas.pivot(index='Temporada', columns='Posicion', values='Mánager').reset_index()
+                cols = ['Temporada']
+                if 'Campeón' in df_ligas_vista.columns: cols.append('Campeón')
+                if 'Subcampeón' in df_ligas_vista.columns: cols.append('Subcampeón')
+                df_ligas_vista = df_ligas_vista[cols]
+                st.dataframe(df_ligas_vista, use_container_width=True, hide_index=True)
+            else:
+                st.warning("⚠️ No se ha generado el palmarés de liga.")
+
+        with col_copa:
+            st.subheader("🏆 Campeones de Copa")
+            if df_copas is not None:
+                df_copas_vista = df_copas.pivot(index=['Temporada', 'Copa'], columns='Posicion', values='Mánager').reset_index()
+                df_copas_vista['Competición'] = "Copa " + df_copas_vista['Copa'].astype(str)
+                
+                cols = ['Temporada', 'Competición']
+                if 'Campeón' in df_copas_vista.columns: cols.append('Campeón')
+                if 'Finalista' in df_copas_vista.columns: cols.append('Finalista')
+                
+                df_copas_vista = df_copas_vista[cols]
+                st.dataframe(df_copas_vista, use_container_width=True, hide_index=True)
+            else:
+                st.warning("⚠️ No se ha encontrado el palmarés de copas.")
+                
+        st.markdown("---")
+        st.subheader("👑 Reyes de la Liga (Recuento de Títulos)")
+        
+        campeones = []
+        if df_ligas is not None:
+            campeones_liga = df_ligas[df_ligas['Posicion'] == 'Campeón'][['Mánager']].copy()
+            campeones_liga['Trofeo'] = 'Ligas'
+            campeones.append(campeones_liga)
+            
+        if df_copas is not None:
+            campeones_copa = df_copas[df_copas['Posicion'] == 'Campeón'][['Mánager']].copy()
+            campeones_copa['Trofeo'] = 'Copas'
+            campeones.append(campeones_copa)
+            
+        if campeones:
+            df_todos_titulos = pd.concat(campeones, ignore_index=True)
+            tabla_titulos = df_todos_titulos.groupby(['Mánager', 'Trofeo']).size().unstack(fill_value=0).reset_index()
+            
+            if 'Ligas' not in tabla_titulos.columns: tabla_titulos['Ligas'] = 0
+            if 'Copas' not in tabla_titulos.columns: tabla_titulos['Copas'] = 0
+            
+            tabla_titulos['Total Títulos'] = tabla_titulos['Ligas'] + tabla_titulos['Copas']
+            tabla_titulos = tabla_titulos.sort_values(by=['Total Títulos', 'Ligas'], ascending=[False, False]).reset_index(drop=True)
+            tabla_titulos.index = tabla_titulos.index + 1
+            
+            st.dataframe(tabla_titulos[['Mánager', 'Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
+
+    elif menu in ["👤 Perfiles (Próximamente)", "⚔️ Cara a Cara (Próximamente)"]:
+        st.title(menu)
+        st.info("🚧 Estamos trabajando en esta sección. ¡Pronto habrá más salseo!")
+
+else:
+    st.error("❌ Faltan los archivos de datos globales.")
