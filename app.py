@@ -107,7 +107,7 @@ if df is not None:
     # ==========================================
     # PANTALLA 1: VISIÓN GENERAL
     # ==========================================
-    elif st.session_state.pantalla == "🏠 Visión General":
+    elif st.session_state.pantalla == "👁️ Visión General":
         if st.button("⬅️ Volver al Menú Principal"):
             st.session_state.pantalla = "🏠 Menú Principal"
             st.rerun()
@@ -320,7 +320,7 @@ if df is not None:
                         st.dataframe(df_resto_mejores, use_container_width=True)
                 
             with col2:
-                st.subheader("💩 Los Mayores Desastres")
+                st.subheader("☠️ Los Mayores Desastres")
                 if not top10_peores.empty:
                     bot1 = top10_peores.iloc[0]
                     st.error(f"🥇 **{bot1['Mánager']}**")
