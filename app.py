@@ -64,20 +64,17 @@ if df is not None:
             temporadas = df['Temporada'].unique().tolist()
             temporada_sel = st.selectbox("📅 Selecciona la Temporada", temporadas, index=len(temporadas)-1)
         
-        # Filtramos la temporada elegida
         df_temp = df[df['Temporada'] == temporada_sel].copy()
         
         # 🛡️ CONDICIÓN ESPECIAL: TEMPORADA 2024/25
         if temporada_sel == "2024/25":
             st.subheader("📊 Tabla Final (Temporada 2024/25)")
-            # Nos aseguramos de coger solo la última jornada disponible para que no se dupliquen datos
             jornada_max_2425 = df_temp['Jornada'].max()
             df_clasif = df_temp[df_temp['Jornada'] == jornada_max_2425].sort_values(by="Puntos_Acumulados", ascending=False)
             
             df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
             df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
             
-            # 🧊 Congelamos Posición y Mánager
             df_mostrar.index = df_mostrar.index + 1 
             df_mostrar.index.name = "Pos."
             df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
@@ -88,7 +85,7 @@ if df is not None:
             with col_info:
                 st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas de evolución temporal por jornada no están habilitadas.")
                 
-        # 🚀 COMPORTAMIENTO NORMAL (Otras temporadas)
+        # 🚀 COMPORTAMIENTO NORMAL
         else:
             df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
             df_temp['Posición_Jornada'] = df_temp.groupby('Jornada')['Puntos'].rank(method='min', ascending=False).astype(int)
@@ -97,24 +94,23 @@ if df is not None:
             
             col1, col2 = st.columns([1, 1.8])
             
-            # COLUMNA IZQUIERDA: Slider + Tabla (Ideal para el orden en móvil)
+            # COLUMNA IZQUIERDA
             with col1:
                 rango_jornadas = st.slider("🔍 Rango de Jornadas", 1, jornada_maxima, (1, jornada_maxima))
-                jornada_seleccionada = rango_jornadas[1] # Coge el valor máximo del rango seleccionado
+                jornada_seleccionada = rango_jornadas[1] 
                 
                 st.subheader(f"📊 Tabla (Jornada {jornada_seleccionada})")
                 df_clasif = df_temp[df_temp['Jornada'] == jornada_seleccionada].sort_values(by="Puntos_Acumulados", ascending=False)
                 df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
                 df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
                 
-                # 🧊 Congelamos Posición y Mánager
                 df_mostrar.index = df_mostrar.index + 1 
                 df_mostrar.index.name = "Pos."
                 df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
                 
                 st.dataframe(df_mostrar, use_container_width=True)
                 
-            # COLUMNA DERECHA: Filtro Equipos + Gráficas (Aparecerá debajo en móvil)
+            # COLUMNA DERECHA
             with col2:
                 lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
                 managers_seleccionados = st.multiselect(
@@ -142,6 +138,9 @@ if df is not None:
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
+                    # MAGIA AQUÍ: orient="top" y title=None
+                    leyenda_config = alt.Legend(title=None, orient="top")
+                    
                     with tab_pos:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                             x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
@@ -149,7 +148,7 @@ if df is not None:
                                     scale=alt.Scale(domain=[num_managers_total, 1]), 
                                     title='Posición Acumulada', 
                                     axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
+                            color=alt.Color('Mánager:N', legend=leyenda_config),
                             tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
                         ).properties(height=420)
                         st.altair_chart(grafica_posiciones, use_container_width=True)
@@ -161,7 +160,7 @@ if df is not None:
                                     scale=alt.Scale(domain=[num_managers_total, 1]), 
                                     title='Posición en la Jornada', 
                                     axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
+                            color=alt.Color('Mánager:N', legend=leyenda_config),
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_pos_jornada, use_container_width=True)
@@ -176,7 +175,7 @@ if df is not None:
                             y=alt.Y('Puntos_Acumulados:Q', 
                                     scale=alt.Scale(domain=[min_pts_acu - margen_acu, max_pts_acu + margen_acu]), 
                                     title='Puntos Acumulados'),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
+                            color=alt.Color('Mánager:N', legend=leyenda_config),
                             tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición']
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_acu, use_container_width=True)
@@ -191,7 +190,7 @@ if df is not None:
                             y=alt.Y('Puntos:Q', 
                                     scale=alt.Scale(domain=[min_pts_jor - margen_jor, max_pts_jor + margen_jor]), 
                                     title='Puntos en la Jornada'),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
+                            color=alt.Color('Mánager:N', legend=leyenda_config),
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_jor, use_container_width=True)
@@ -252,7 +251,6 @@ if df is not None:
                         st.caption("Puestos del 4 al 10:")
                         df_resto_mejores = top10_mejores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
                         
-                        # 🧊 Congelamos Posición y Mánager
                         df_resto_mejores.index = range(4, 4 + len(df_resto_mejores))
                         df_resto_mejores.index.name = "Pos."
                         df_resto_mejores = df_resto_mejores.reset_index().set_index(['Pos.', 'Mánager'])
@@ -281,7 +279,6 @@ if df is not None:
                         st.caption("Puestos del 4 al 10:")
                         df_resto_peores = top10_peores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
                         
-                        # 🧊 Congelamos Posición y Mánager
                         df_resto_peores.index = range(4, 4 + len(df_resto_peores))
                         df_resto_peores.index.name = "Pos."
                         df_resto_peores = df_resto_peores.reset_index().set_index(['Pos.', 'Mánager'])
@@ -310,7 +307,6 @@ if df is not None:
                 '💩 Últimos': df_ultimos
             }).fillna(0).astype(int)
             
-            # 🧊 Congelamos Posición y Mánager
             tabla_medallas = tabla_medallas.sort_values(by=['🥇 1º (Oros)', '🥈 2º (Platas)'], ascending=[False, False]).reset_index()
             tabla_medallas.index = tabla_medallas.index + 1
             tabla_medallas.index.name = "Pos."
@@ -375,7 +371,6 @@ if df is not None:
             if 'Ligas' not in tabla_titulos.columns: tabla_titulos['Ligas'] = 0
             if 'Copas' not in tabla_titulos.columns: tabla_titulos['Copas'] = 0
             
-            # 🧊 Congelamos Posición y Mánager
             tabla_titulos['Total Títulos'] = tabla_titulos['Ligas'] + tabla_titulos['Copas']
             tabla_titulos = tabla_titulos.sort_values(by=['Total Títulos', 'Ligas'], ascending=[False, False]).reset_index(drop=True)
             tabla_titulos.index = tabla_titulos.index + 1
