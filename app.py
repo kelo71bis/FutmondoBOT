@@ -73,7 +73,7 @@ if df is not None:
     # ==========================================
     if st.session_state.pantalla == "🏠 Menú Principal":
         st.title("🏆 Liga Santanguissa - Panel de Control")
-        st.subheader("Bienvenido a la web oficial de estadísticas y salseo histórico.")
+        st.subheader("Bienvenido a la web oficial de estadísticas y datos históricos.")
         st.markdown("---")
         
         st.write("Selecciona una sección para empezar a analizar los datos:")
@@ -451,7 +451,7 @@ if df is not None:
             st.session_state.pantalla = "🏠 Menú Principal"
             st.rerun()
         st.title(st.session_state.pantalla)
-        st.info("🚧 Estamos trabajando en esta sección. ¡Pronto habrá más salseo!")
+        st.info("🚧 Estamos trabajando en esta sección. Te jodes")
 
 else:
     st.error("❌ Faltan los archivos de datos globales.")
