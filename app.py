@@ -149,7 +149,7 @@ if df is not None:
                                     scale=alt.Scale(domain=[num_managers_total, 1]), 
                                     title='Posición Acumulada', 
                                     axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
                             tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
                         ).properties(height=420)
                         st.altair_chart(grafica_posiciones, use_container_width=True)
@@ -161,7 +161,7 @@ if df is not None:
                                     scale=alt.Scale(domain=[num_managers_total, 1]), 
                                     title='Posición en la Jornada', 
                                     axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_pos_jornada, use_container_width=True)
@@ -176,7 +176,7 @@ if df is not None:
                             y=alt.Y('Puntos_Acumulados:Q', 
                                     scale=alt.Scale(domain=[min_pts_acu - margen_acu, max_pts_acu + margen_acu]), 
                                     title='Puntos Acumulados'),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
                             tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición']
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_acu, use_container_width=True)
@@ -191,7 +191,7 @@ if df is not None:
                             y=alt.Y('Puntos:Q', 
                                     scale=alt.Scale(domain=[min_pts_jor - margen_jor, max_pts_jor + margen_jor]), 
                                     title='Puntos en la Jornada'),
-                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="bottom")),
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_jor, use_container_width=True)
