@@ -70,7 +70,10 @@ if df is not None:
         # 🛡️ CONDICIÓN ESPECIAL: TEMPORADA 2024/25
         if temporada_sel == "2024/25":
             st.subheader("📊 Tabla Final (Temporada 2024/25)")
-            df_clasif = df_temp.sort_values(by="Puntos_Acumulados", ascending=False)
+            # Nos aseguramos de coger solo la última jornada disponible para que no se dupliquen datos
+            jornada_max_2425 = df_temp['Jornada'].max()
+            df_clasif = df_temp[df_temp['Jornada'] == jornada_max_2425].sort_values(by="Puntos_Acumulados", ascending=False)
+            
             df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
             df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
             
@@ -92,21 +95,15 @@ if df is not None:
             
             jornada_maxima = int(df_temp['Jornada'].max())
             
-            col_sl1, col_sl2 = st.columns([1.5, 2.3])
-            with col_sl1:
-                rango_jornadas = st.slider("🔍 Rango de Jornadas en Gráficas", 1, jornada_maxima, (1, jornada_maxima))
-            with col_sl2:
-                lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
-                managers_seleccionados = st.multiselect(
-                    "👥 Filtrar Equipos en Gráfica:", 
-                    lista_managers_disponibles, 
-                    default=lista_managers_disponibles
-                )
-            
             col1, col2 = st.columns([1, 1.8])
+            
+            # COLUMNA IZQUIERDA: Slider + Tabla (Ideal para el orden en móvil)
             with col1:
-                st.subheader(f"📊 Tabla (Jornada {jornada_maxima})")
-                df_clasif = df_temp[df_temp['Jornada'] == jornada_maxima].sort_values(by="Puntos_Acumulados", ascending=False)
+                rango_jornadas = st.slider("🔍 Rango de Jornadas", 1, jornada_maxima, (1, jornada_maxima))
+                jornada_seleccionada = rango_jornadas[1] # Coge el valor máximo del rango seleccionado
+                
+                st.subheader(f"📊 Tabla (Jornada {jornada_seleccionada})")
+                df_clasif = df_temp[df_temp['Jornada'] == jornada_seleccionada].sort_values(by="Puntos_Acumulados", ascending=False)
                 df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
                 df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
                 
@@ -117,7 +114,15 @@ if df is not None:
                 
                 st.dataframe(df_mostrar, use_container_width=True)
                 
+            # COLUMNA DERECHA: Filtro Equipos + Gráficas (Aparecerá debajo en móvil)
             with col2:
+                lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
+                managers_seleccionados = st.multiselect(
+                    "👥 Filtrar Equipos en Gráficas:", 
+                    lista_managers_disponibles, 
+                    default=lista_managers_disponibles
+                )
+                
                 st.subheader("📈 Análisis de Evolución")
                 
                 df_temp_grafica = df_temp[
