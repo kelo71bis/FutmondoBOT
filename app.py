@@ -73,7 +73,7 @@ if df is not None:
     # ==========================================
     if st.session_state.pantalla == "🏠 Menú Principal":
         st.title("🏆 Liga Santanguissa - Panel de Control")
-        st.subheader("Bienvenido a la web oficial de estadísticas y datos históricos.")
+        st.subheader("Bienvenido a la web oficial de estadísticas y datos históricos de LaLiga Santanguissa.")
         st.markdown("---")
         
         st.write("Selecciona una sección para empezar a analizar los datos:")
@@ -81,7 +81,7 @@ if df is not None:
         # Cuadrícula de botones grandes y visuales
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("🏠 Clasificación y Evolución", use_container_width=True):
+            if st.button("🏠 Visión General", use_container_width=True):
                 st.session_state.pantalla = "🏠 Visión General"
                 st.rerun()
             st.caption("Consulta las tablas dinámicas por jornada y el scalextric de gráficas temporales.")
@@ -349,8 +349,8 @@ if df is not None:
                 st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
 
         st.markdown("---")
-        st.subheader("🏅 El Medallero de Jornadas (Cielo e Infierno)")
-        st.write(f"Conteo de posiciones por jornada aplicando el filtro actual: **{temporada_sf_sel}**")
+        st.subheader("🏅 El Medallero de Jornadas (y retratadas)")
+        st.write(f"Los mejores y peores de cada jornada, aplicando el filtro actual: **{temporada_sf_sel}**")
         
         if not df_records.empty:
             df_medallero = df_records.copy()
