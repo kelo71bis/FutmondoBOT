@@ -81,7 +81,7 @@ if df is not None:
         # Cuadrícula de botones grandes y visuales
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("🏠 Clasificación y Evolución", use_container_width=True, type="primary"):
+            if st.button("🏠 Clasificación y Evolución", use_container_width=True):
                 st.session_state.pantalla = "🏠 Visión General"
                 st.rerun()
             st.caption("Consulta las tablas dinámicas por jornada y el scalextric de gráficas temporales.")
