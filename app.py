@@ -36,16 +36,29 @@ def cargar_datos():
 df, df_ligas, df_copas = cargar_datos()
 
 if df is not None:
-    # 🗂️ MENÚ DE NAVEGACIÓN LATERAL
+    # 🔄 CONTROL DE NAVEGACIÓN MEDIANTE SESSION STATE
+    if 'pantalla' not in st.session_state:
+        st.session_state.pantalla = "🏠 Menú Principal"
+
+    # 🗂️ BARRA LATERAL (Actúa como acceso rápido secundario)
     st.sidebar.title("⚽ Menú de Liga")
-    menu = st.sidebar.radio("Navegación", [
+    opciones_sidebar = [
+        "🏠 Menú Principal",
         "🏠 Visión General", 
         "🏆 Salón de la Fama", 
         "🥇 Palmarés Histórico",
         "👤 Perfiles (Próximamente)", 
         "⚔️ Cara a Cara (Próximamente)"
-    ])
+    ]
+    # Sincronizamos la barra lateral con el estado de la app
+    idx_actual = opciones_sidebar.index(st.session_state.pantalla) if st.session_state.pantalla in opciones_sidebar else 0
+    menu_sidebar = st.sidebar.radio("Navegación Rápida", opciones_sidebar, index=idx_actual, key="sidebar_nav")
     
+    # Si el usuario toca la barra lateral, actualizamos la pantalla global
+    if menu_sidebar != st.session_state.pantalla:
+        st.session_state.pantalla = menu_sidebar
+        st.rerun()
+
     st.sidebar.markdown("---")
     with st.sidebar.expander("⚠️ Info Histórica Importante"):
         st.caption("• **2020/21**: Faltan los datos de la temporada inaugural.")
@@ -53,9 +66,49 @@ if df is not None:
         st.caption("• **2024/25**: Solo hay foto final de puntos acumulados. Sus jornadas no cuentan para récords ni MVPs.")
 
     # ==========================================
+    # PANTALLA 0: MENÚ PRINCIPAL
+    # ==========================================
+    if st.session_state.pantalla == "🏠 Menú Principal":
+        st.title("🏆 Liga Santanguissa - Panel de Control")
+        st.subheader("Bienvenido a la web oficial de estadísticas y salseo histórico.")
+        st.markdown("---")
+        
+        st.write("Selecciona una sección para empezar a analizar los datos:")
+        
+        # Cuadrícula de botones grandes y visuales
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🏠 Clasificación y Evolución", use_container_width=True, type="primary"):
+                st.session_state.pantalla = "🏠 Visión General"
+                st.rerun()
+            st.caption("Consulta las tablas dinámicas por jornada y el scalextric de gráficas temporales.")
+            
+            st.markdown("##") # Espaciado
+            if st.button("🥇 Vitrina de Trofeos e Historial", use_container_width=True):
+                st.session_state.pantalla = "🥇 Palmarés Histórico"
+                st.rerun()
+            st.caption("El palmarés completo de ligas y copas, y el ranking de reyes de títulos.")
+
+        with c2:
+            if st.button("🏆 El Salón de la Fama (Récords)", use_container_width=True):
+                st.session_state.pantalla = "🏆 Salón de la Fama"
+                st.rerun()
+            st.caption("El Top 10 histórico de las mayores exhibiciones y los desastres más estrepitosos.")
+            
+            st.markdown("##") # Espaciado
+            if st.button("⚔️ Cara a Cara (Próximamente)", use_container_width=True):
+                st.session_state.pantalla = "⚔️ Cara a Cara (Próximamente)"
+                st.rerun()
+            st.caption("Cruza las trayectorias de dos mánagers y descubre quién manda en vuestro duelo particular.")
+
+    # ==========================================
     # PANTALLA 1: VISIÓN GENERAL
     # ==========================================
-    if menu == "🏠 Visión General":
+    elif st.session_state.pantalla == "🏠 Visión General":
+        if st.button("⬅️ Volver al Menú Principal"):
+            st.session_state.pantalla = "🏠 Menú Principal"
+            st.rerun()
+            
         st.title("🏠 Clasificación Actual")
         st.markdown("---")
         
@@ -119,6 +172,9 @@ if df is not None:
                     default=lista_managers_disponibles
                 )
                 
+                # 💡 LA NOTA EXPLICATIVA
+                st.caption("💡 *Tip: Usa el buscador de equipos de arriba y el deslizador de jornadas para aislar trayectorias y ver el gráfico mucho más limpio.*")
+                
                 st.subheader("📈 Análisis de Evolución")
                 
                 df_temp_grafica = df_temp[
@@ -138,7 +194,7 @@ if df is not None:
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
-                    # SOLUCIÓN DEFINITIVA PARA MÓVIL: orient="bottom" y columns=1 (crece en vertical, libre de cortes de ancho)
+                    # MAGIA AQUÍ: orient="bottom" y columns=2
                     leyenda_config = alt.Legend(title=None, orient="bottom", columns=2)
                     
                     with tab_pos:
@@ -200,7 +256,11 @@ if df is not None:
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
     # ==========================================
-    elif menu == "🏆 Salón de la Fama":
+    elif st.session_state.pantalla == "🏆 Salón de la Fama":
+        if st.button("⬅️ Volver al Menú Principal"):
+            st.session_state.pantalla = "🏠 Menú Principal"
+            st.rerun()
+            
         st.title("🏆 El Salón de la Fama")
         st.write("Consulta los mejores y peores registros históricos o fíltralos por una temporada concreta.")
         st.markdown("---")
@@ -287,7 +347,7 @@ if df is not None:
 
         st.markdown("---")
         st.subheader("🏅 El Medallero de Jornadas (Cielo e Infierno)")
-        st.write(f"Conteo de posiciones por jornada aplicando el fango histórico: **{temporada_sf_sel}**")
+        st.write(f"Conteo de posiciones por jornada aplicando el filtro actual: **{temporada_sf_sel}**")
         
         if not df_records.empty:
             df_medallero = df_records.copy()
@@ -317,7 +377,11 @@ if df is not None:
     # ==========================================
     # PANTALLA 3: PALMARÉS HISTÓRICO
     # ==========================================
-    elif menu == "🥇 Palmarés Histórico":
+    elif st.session_state.pantalla == "🥇 Palmarés Histórico":
+        if st.button("⬅️ Volver al Menú Principal"):
+            st.session_state.pantalla = "🏠 Menú Principal"
+            st.rerun()
+            
         st.title("🥇 Vitrina de Trofeos")
         st.markdown("---")
         
@@ -379,8 +443,11 @@ if df is not None:
             
             st.dataframe(tabla_titulos[['Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
 
-    elif menu in ["👤 Perfiles (Próximamente)", "⚔️ Cara a Cara (Próximamente)"]:
-        st.title(menu)
+    elif st.session_state.pantalla in ["👤 Perfiles (Próximamente)", "⚔️ Cara a Cara (Próximamente)"]:
+        if st.button("⬅️ Volver al Menú Principal"):
+            st.session_state.pantalla = "🏠 Menú Principal"
+            st.rerun()
+        st.title(st.session_state.pantalla)
         st.info("🚧 Estamos trabajando en esta sección. ¡Pronto habrá más salseo!")
 
 else:
