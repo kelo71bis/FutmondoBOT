@@ -96,13 +96,18 @@ if df is not None:
             with tab_pos:
                 # Contamos cuántos mánagers hay para fijar el límite del eje Y
                 num_managers = df_temp['Mánager'].nunique()
+                # Creamos una lista con todos los números [1, 2, 3... hasta num_managers] para las etiquetas
+                lista_posiciones = list(range(1, num_managers + 1))
                 
                 grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                     x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                    y=alt.Y('Posición:Q', scale=alt.Scale(domain=[num_managers, 1]), title='Posición', axis=alt.Axis(tickMinStep=1)),
+                    y=alt.Y('Posición:Q', 
+                            scale=alt.Scale(domain=[num_managers, 1]), 
+                            title='Posición', 
+                            axis=alt.Axis(values=lista_posiciones, tickMinStep=1)), # <- Forzamos a pintar cada número
                     color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
                     tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
-                ).properties(height=420) # Hemos quitado el .interactive() del final
+                ).properties(height=420)
                 
                 st.altair_chart(grafica_posiciones, use_container_width=True)
                 
