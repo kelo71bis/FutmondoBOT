@@ -44,7 +44,7 @@ if df is not None:
     st.sidebar.title("⚽ Menú de Liga")
     opciones_sidebar = [
         "🏠 Menú Principal",
-        "👁️ Visión General", 
+        "📈 Análisis por temporadas", 
         "🏆 Salón de la Fama", 
         "🥇 Palmarés Histórico",
         "👤 Perfiles (Próximamente)", 
@@ -81,8 +81,8 @@ if df is not None:
         # Cuadrícula de botones grandes y visuales
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("👁️ Visión General", use_container_width=True):
-                st.session_state.pantalla = "👁️ Visión General"
+            if st.button("📈 Análisis por temporadas", use_container_width=True):
+                st.session_state.pantalla = "📈 Análisis por temporadas"
                 st.rerun()
             st.caption("Consulta las tablas dinámicas por jornada y el scalextric de gráficas temporales.")
             
@@ -105,14 +105,14 @@ if df is not None:
             st.caption("Cruza las trayectorias de dos mánagers y descubre quién manda en vuestro duelo particular.")
 
     # ==========================================
-    # PANTALLA 1: VISIÓN GENERAL
+    # PANTALLA 1: ANÁLISIS POR TEMPORADAS
     # ==========================================
-    elif st.session_state.pantalla == "👁️ Visión General":
+    elif st.session_state.pantalla == "📈 Análisis por temporadas":
         if st.button("⬅️ Volver al Menú Principal"):
             st.session_state.pantalla = "🏠 Menú Principal"
             st.rerun()
             
-        st.title("📈 Clasificación Actual")
+        st.title("📈 Análisis por temporadas")
         st.markdown("---")
         
         col_filtros, col_vacio = st.columns([1, 3])
