@@ -138,8 +138,8 @@ if df is not None:
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
-                    # MAGIA AQUÍ: orient="top" y title=None
-                    leyenda_config = alt.Legend(title=None, orient="top")
+                    # MAGIA AQUÍ: orient="top" y columns=3 para forzar la cuadrícula arriba
+                    leyenda_config = alt.Legend(title=None, orient="top", columns=3)
                     
                     with tab_pos:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
