@@ -139,7 +139,7 @@ if df is not None:
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
                     # SOLUCIÓN DEFINITIVA PARA MÓVIL: orient="bottom" y columns=1 (crece en vertical, libre de cortes de ancho)
-                    leyenda_config = alt.Legend(title=None, orient="bottom", columns=1)
+                    leyenda_config = alt.Legend(title=None, orient="bottom", columns=2)
                     
                     with tab_pos:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
