@@ -92,14 +92,17 @@ if df is not None:
             # 🗂️ PESTAÑAS PARA LAS GRÁFICAS
             tab_pos, tab_pts = st.tabs(["🎢 Evolución de Posición", "📈 Puntos Acumulados"])
             
-            # GRÁFICA DE POSICIONES (EJE INVERTIDO CON ALTAIR)
+            # GRÁFICA DE POSICIONES (EJE INVERTIDO Y BLOQUEADO CON ALTAIR)
             with tab_pos:
+                # Contamos cuántos mánagers hay para fijar el límite del eje Y
+                num_managers = df_temp['Mánager'].nunique()
+                
                 grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                    x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)), # :O significa Ordinal (números enteros)
-                    y=alt.Y('Posición:Q', scale=alt.Scale(reverse=True), title='Posición', axis=alt.Axis(tickMinStep=1)), # Eje Y invertido
+                    x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                    y=alt.Y('Posición:Q', scale=alt.Scale(domain=[num_managers, 1]), title='Posición', axis=alt.Axis(tickMinStep=1)),
                     color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                    tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados'] # Info al pasar el ratón
-                ).properties(height=420).interactive()
+                    tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
+                ).properties(height=420) # Hemos quitado el .interactive() del final
                 
                 st.altair_chart(grafica_posiciones, use_container_width=True)
                 
