@@ -111,10 +111,25 @@ if df is not None:
                 
                 st.altair_chart(grafica_posiciones, use_container_width=True)
                 
-            # GRÁFICA DE PUNTOS (LA DE SIEMPRE)
+            # GRÁFICA DE PUNTOS (CON ALTAIR Y LÍMITES DINÁMICOS)
             with tab_pts:
-                df_grafica_pts = df_temp_grafica.pivot(index='Jornada', columns='Mánager', values='Puntos_Acumulados')
-                st.line_chart(df_grafica_pts, height=420)
+                # Calculamos el mínimo y máximo de puntos en el tramo seleccionado
+                min_pts = int(df_temp_grafica['Puntos_Acumulados'].min())
+                max_pts = int(df_temp_grafica['Puntos_Acumulados'].max())
+                
+                # Le damos un 5% de margen por arriba y por abajo (o un mínimo de 20 puntos si están muy empatados)
+                margen = max(20, int((max_pts - min_pts) * 0.05)) 
+                
+                grafica_puntos = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                    x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                    y=alt.Y('Puntos_Acumulados:Q', 
+                            scale=alt.Scale(domain=[min_pts - margen, max_pts + margen]), 
+                            title='Puntos Acumulados'),
+                    color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                    tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición'] # He añadido la posición al tooltip como extra
+                ).properties(height=420)
+                
+                st.altair_chart(grafica_puntos, use_container_width=True)
 
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
