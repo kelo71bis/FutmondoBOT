@@ -83,12 +83,23 @@ if df is not None:
                 
         # 🚀 COMPORTAMIENTO NORMAL (Otras temporadas)
         else:
-            # 🧮 CALCULAMOS AMBAS POSICIONES JORNADA A JORNADA
+            # 🧮 CALCULAMOS AMBAS POSICIONES JORNADA A JORNADA (Sobre el total real de la temporada)
             df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
             df_temp['Posición_Jornada'] = df_temp.groupby('Jornada')['Puntos'].rank(method='min', ascending=False).astype(int)
             
             jornada_maxima = int(df_temp['Jornada'].max())
-            rango_jornadas = st.slider("🔍 Rango de Jornadas en Gráficas", 1, jornada_maxima, (1, jornada_maxima))
+            
+            col_sl1, col_sl2 = st.columns([1.5, 2.3])
+            with col_sl1:
+                rango_jornadas = st.slider("🔍 Rango de Jornadas en Gráficas", 1, jornada_maxima, (1, jornada_maxima))
+            with col_sl2:
+                # 🕵️‍♂️ EL NUEVO SUPER FILTRO DE MÁNAGERS/EQUIPOS
+                lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
+                managers_seleccionados = st.multiselect(
+                    "👥 Filtrar Equipos en Gráfica:", 
+                    lista_managers_disponibles, 
+                    default=lista_managers_disponibles
+                )
             
             col1, col2 = st.columns([1, 1.8])
             with col1:
@@ -102,78 +113,85 @@ if df is not None:
             with col2:
                 st.subheader("📈 Análisis de Evolución")
                 
-                # Filtramos los datos para el slider
-                df_temp_grafica = df_temp[(df_temp['Jornada'] >= rango_jornadas[0]) & (df_temp['Jornada'] <= rango_jornadas[1])]
+                # 🧪 APLICAMOS AMBOS FILTROS: Rango de Jornadas Y Mánagers Seleccionados
+                df_temp_grafica = df_temp[
+                    (df_temp['Jornada'] >= rango_jornadas[0]) & 
+                    (df_temp['Jornada'] <= rango_jornadas[1]) &
+                    (df_temp['Mánager'].isin(managers_seleccionados))
+                ]
                 
-                # 🗂️ LAS 4 PESTAÑAS DE ANÁLISIS
-                tab_pos, tab_pos_jor, tab_pts_acu, tab_pts_jor = st.tabs([
-                    "🎢 Posición Acumulada", 
-                    "🎯 Posición en Jornada", 
-                    "📈 Puntos Acumulados",
-                    "⚡ Puntos en Jornada"
-                ])
-                
-                # Configuración común para las gráficas de posiciones
-                num_managers = df_temp['Mánager'].nunique()
-                lista_posiciones = list(range(1, num_managers + 1))
-                
-                # PESTAÑA 1: EVOLUCIÓN DE POSICIÓN ACUMULADA
-                with tab_pos:
-                    grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                        y=alt.Y('Posición:Q', 
-                                scale=alt.Scale(domain=[num_managers, 1]), 
-                                title='Posición Acumulada', 
-                                axis=alt.Axis(values=lista_posiciones, format='d', tickMinStep=1)),
-                        color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                        tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
-                    ).properties(height=420)
-                    st.altair_chart(grafica_posiciones, use_container_width=True)
+                if not df_temp_grafica.empty:
+                    # 🗂️ LAS 4 PESTAÑAS DE ANÁLISIS
+                    tab_pos, tab_pos_jor, tab_pts_acu, tab_pts_jor = st.tabs([
+                        "🎢 Posición Acumulada", 
+                        "🎯 Posición en Jornada", 
+                        "📈 Puntos Acumulados",
+                        "⚡ Puntos en Jornada"
+                    ])
                     
-                # PESTAÑA 2: POSICIÓN DE LA JORNADA AISLADA
-                with tab_pos_jor:
-                    grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                        y=alt.Y('Posición_Jornada:Q', 
-                                scale=alt.Scale(domain=[num_managers, 1]), 
-                                title='Posición en la Jornada', 
-                                axis=alt.Axis(values=lista_posiciones, format='d', tickMinStep=1)),
-                        color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                        tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
-                    ).properties(height=420)
-                    st.altair_chart(grafica_pos_jornada, use_container_width=True)
+                    # El límite visual de las posiciones siempre se basa en el total de la liga
+                    num_managers_total = df_temp['Mánager'].nunique()
+                    lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
-                # PESTAÑA 3: PUNTOS ACUMULADOS (CON LÍMITES DINÁMICOS)
-                with tab_pts_acu:
-                    min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
-                    max_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].max())
-                    margen_acu = max(20, int((max_pts_acu - min_pts_acu) * 0.05))
-                    
-                    grafica_puntos_acu = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                        y=alt.Y('Puntos_Acumulados:Q', 
-                                scale=alt.Scale(domain=[min_pts_acu - margen_acu, max_pts_acu + margen_acu]), 
-                                title='Puntos Acumulados'),
-                        color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                        tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición']
-                    ).properties(height=420)
-                    st.altair_chart(grafica_puntos_acu, use_container_width=True)
-                    
-                # PESTAÑA 4: PUNTOS DE LA JORNADA AISLADA (NUEVA + LÍMITES DINÁMICOS)
-                with tab_pts_jor:
-                    min_pts_jor = int(df_temp_grafica['Puntos'].min())
-                    max_pts_jor = int(df_temp_grafica['Puntos'].max())
-                    margen_jor = max(10, int((max_pts_jor - min_pts_jor) * 0.1))
-                    
-                    grafica_puntos_jor = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                        y=alt.Y('Puntos:Q', 
-                                scale=alt.Scale(domain=[min_pts_jor - margen_jor, max_pts_jor + margen_jor]), 
-                                title='Puntos en la Jornada'),
-                        color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
-                        tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
-                    ).properties(height=420)
-                    st.altair_chart(grafica_puntos_jor, use_container_width=True)
+                    # PESTAÑA 1: EVOLUCIÓN DE POSICIÓN ACUMULADA
+                    with tab_pos:
+                        grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                            y=alt.Y('Posición:Q', 
+                                    scale=alt.Scale(domain=[num_managers_total, 1]), 
+                                    title='Posición Acumulada', 
+                                    axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
+                        ).properties(height=420)
+                        st.altair_chart(grafica_posiciones, use_container_width=True)
+                        
+                    # PESTAÑA 2: POSICIÓN DE LA JORNADA AISLADA
+                    with tab_pos_jor:
+                        grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                            y=alt.Y('Posición_Jornada:Q', 
+                                    scale=alt.Scale(domain=[num_managers_total, 1]), 
+                                    title='Posición en la Jornada', 
+                                    axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
+                        ).properties(height=420)
+                        st.altair_chart(grafica_pos_jornada, use_container_width=True)
+                        
+                    # PESTAÑA 3: PUNTOS ACUMULADOS (CON LÍMITES DINÁMICOS ADAPTATIVOS)
+                    with tab_pts_acu:
+                        min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
+                        max_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].max())
+                        margen_acu = max(20, int((max_pts_acu - min_pts_acu) * 0.05))
+                        
+                        grafica_puntos_acu = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                            y=alt.Y('Puntos_Acumulados:Q', 
+                                    scale=alt.Scale(domain=[min_pts_acu - margen_acu, max_pts_acu + margen_acu]), 
+                                    title='Puntos Acumulados'),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición']
+                        ).properties(height=420)
+                        st.altair_chart(grafica_puntos_acu, use_container_width=True)
+                        
+                    # PESTAÑA 4: PUNTOS DE LA JORNADA AISLADA
+                    with tab_pts_jor:
+                        min_pts_jor = int(df_temp_grafica['Puntos'].min())
+                        max_pts_jor = int(df_temp_grafica['Puntos'].max())
+                        margen_jor = max(10, int((max_pts_jor - min_pts_jor) * 0.1))
+                        
+                        grafica_puntos_jor = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                            y=alt.Y('Puntos:Q', 
+                                    scale=alt.Scale(domain=[min_pts_jor - margen_jor, max_pts_jor + margen_jor]), 
+                                    title='Puntos en la Jornada'),
+                            color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
+                            tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
+                        ).properties(height=420)
+                        st.altair_chart(grafica_puntos_jor, use_container_width=True)
+                else:
+                    st.warning("⚠️ Selecciona al menos un mánager en el filtro para pintar las gráficas.")
 
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
