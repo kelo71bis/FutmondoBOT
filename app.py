@@ -20,17 +20,13 @@ def cargar_datos():
         df_prop = pd.read_excel(ruta_propietarios)
         mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
         
-        # Mapeo manual para Arsenati (Histórico)
-        mapeo_nombres['LEGACY_ARSENATI'] = 'Arsenati (Histórico)'
-        
+        # 🔄 TODO AUTOMÁTICO: Arsenati ya se traduce solo aquí porque existe en el maestro
         df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
         
-        # Cargar archivo de Ligas si existe
         if os.path.exists(ruta_ligas):
             df_ligas = pd.read_excel(ruta_ligas)
             df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
             
-        # Cargar archivo de Copas si existe
         if os.path.exists(ruta_copas):
             df_copas = pd.read_excel(ruta_copas)
             df_copas['Mánager'] = df_copas['ID_Futmondo'].map(mapeo_nombres).fillna(df_copas['ID_Futmondo'])
