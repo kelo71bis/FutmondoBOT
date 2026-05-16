@@ -20,9 +20,13 @@ LEAGUE_ID = "504e4f584d8bec9a67000079"
 CHAMPIONSHIP_ID = "5f452f5d3e7c0d5ae0fbe924"
 USER_ID = "5dcac7a682052f531c77f140"
 
-# 🛑 BOTÓN ROJO: Ponlo en True para que descargue TODO de cero (ideal para arreglar errores)
-# Una vez lo hayas ejecutado y arreglado, puedes volver a ponerlo en False para el día a día.
+# 🛑 BOTÓN ROJO DE RECARGA: Ponlo en True para descargar todo de cero
 FORZAR_RECARGA_COMPLETA = False 
+
+# 🗑️ PANEL DE LIMPIEZA MANUAL (Jornadas fantasma o adelantadas)
+# Añade aquí las jornadas que quieres borrar del Excel y evitar que se descarguen.
+# Si no quieres borrar ninguna, déjalo así: JORNADAS_A_IGNORAR = []
+JORNADAS_A_IGNORAR = [31.5]
 
 def generar_td_puntos():
     print("🧠 Construyendo td_puntos_jugadores desde la API de Alineaciones...")
@@ -40,14 +44,20 @@ def generar_td_puntos():
     if res_rounds.status_code == 200:
         rounds = res_rounds.json().get("answer", {}).get("rounds", [])
         for r in rounds:
+            numero_jornada = r.get("number")
             if r.get("status") == "closed":
+                # LÓGICA DE BLOQUEO DE JORNADAS
+                if numero_jornada in JORNADAS_A_IGNORAR:
+                    print(f"   ⏭️ Ignorando jornada {numero_jornada} por configuración manual.")
+                    continue
+                
                 jornadas_cerradas.append({
                     "id": r.get("_id"),
-                    "numero": r.get("number")
+                    "numero": numero_jornada
                 })
     
     if not jornadas_cerradas:
-        print("⚠️ No hay jornadas cerradas todavía.")
+        print("⚠️ No hay jornadas cerradas válidas todavía.")
         return
 
     # 2. Obtener la lista de usuarios/propietarios
@@ -71,6 +81,15 @@ def generar_td_puntos():
     
     if os.path.exists(ruta_td) and not FORZAR_RECARGA_COMPLETA:
         df_existente = pd.read_excel(ruta_td)
+        
+        # --- 🧹 LÓGICA DE BORRADO EN EL EXCEL EXISTENTE ---
+        if JORNADAS_A_IGNORAR:
+            filas_antes = len(df_existente)
+            df_existente = df_existente[~df_existente['jornada'].isin(JORNADAS_A_IGNORAR)]
+            filas_despues = len(df_existente)
+            if filas_antes != filas_despues:
+                print(f"   🗑️ Se han borrado {filas_antes - filas_despues} filas de las jornadas {JORNADAS_A_IGNORAR} del Excel antiguo.")
+                
         df_existente['clave_delta'] = df_existente['jornada'].astype(str) + "_" + df_existente['id_propietario']
         combinaciones_procesadas = df_existente['clave_delta'].unique().tolist()
         df_existente = df_existente.drop(columns=['clave_delta'])
@@ -134,14 +153,14 @@ def generar_td_puntos():
                             "rojas": detalles.get("red_card", 0)
                         })
                         
-                    # LÓGICA DEL -5 (HUECO VACÍO CORREGIDO PARA QUE NO SE FUSIONEN)
+                    # LÓGICA DEL -5 (HUECOS VACÍOS DIFERENCIADOS)
                     huecos_libres = 11 - jugadores_alineados
                     for i in range(huecos_libres):
                         filas_td.append({
                             "temporada": TEMPORADA_ACTUAL,
                             "jornada": jor["numero"],
                             "id_propietario": prop,
-                            "id_jugador": f"HUECO_VACIO_{i+1}", # <-- Diferenciamos cada hueco
+                            "id_jugador": f"HUECO_VACIO_{i+1}",
                             "posicion": "Ninguna",
                             "titular": "Sí",
                             "puntos": -5,
@@ -159,11 +178,13 @@ def generar_td_puntos():
 
     print("\n✅ Extracción completada. Guardando tabla de hechos...")
     
-    if filas_td:
-        df_nuevos = pd.DataFrame(filas_td)
+    if filas_td or not df_existente.empty:
+        df_nuevos = pd.DataFrame(filas_td) if filas_td else pd.DataFrame()
         
-        if not df_existente.empty:
+        if not df_existente.empty and not df_nuevos.empty:
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
+        elif not df_existente.empty:
+            df_final = df_existente
         else:
             df_final = df_nuevos
             
@@ -181,15 +202,7 @@ def generar_td_puntos():
         df_final.to_excel(ruta_td, index=False)
         print(f"💾 ¡Datos guardados en datos/hechos/ con {len(df_final)} registros totales!")
     else:
-        # Aunque no haya datos nuevos, pasamos la escoba al Excel existente por si acaso
-        if not df_existente.empty:
-            filas_antes = len(df_existente)
-            df_existente = df_existente.drop_duplicates(subset=['temporada', 'jornada', 'id_propietario', 'id_jugador'], keep='last')
-            filas_despues = len(df_existente)
-            if filas_antes != filas_despues:
-                df_existente.to_excel(ruta_td, index=False)
-                print(f"🧹 Se aprovechó para limpiar {filas_antes - filas_despues} duplicados antiguos.")
-        print("✅ No había datos de jornadas nuevas que descargar.")
+        print("✅ No había datos de jornadas nuevas que descargar y el Excel estaba vacío.")
 
 if __name__ == "__main__":
     generar_td_puntos()

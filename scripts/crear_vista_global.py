@@ -11,16 +11,16 @@ def generar_vista_global():
         "salida": "datos/vistas_negocio/Fact_Global_Master.xlsx"
     }
     
-    # 🎯 PUNTOS EXACTOS JORNADA 1
+# 🎯 PUNTOS EXACTOS JORNADA 1 (Nuevos valores hardcodeados)
     PUNTOS_EXACTOS_J1 = {
-        "5f45324dec331549297ee971": 79.0,
-        "5f4530beec331549297ee6d6": 71.0,
-        "62d5bd9ad8106d3355b5bdc1": 69.0,
-        "5f47aeb6c387a50bca03dd55": 51.0,
-        "5f4531e9764e7d491e029746": 43.0,
-        "5f47ab5b9e2edb0bb831c703": 55.0,
-        "5f452f5e66dd374930eb2b71": 41.0,
-        "5f453062ec331549297ee6b8": 32.0
+        "5f4530beec331549297ee6d6": 65.0, # URSS
+        "5f4531e9764e7d491e029746": 49.0, # Cracklos
+        "5f45324dec331549297ee971": 66.0, # Jatafe
+        "5f47aeb6c387a50bca03dd55": 51.0, # Cruyffisme
+        "5f453062ec331549297ee6b8": 41.0, # Dendryd
+        "62d5bd9ad8106d3355b5bdc1": 56.0, # Pallejandro
+        "5f452f5e66dd374930eb2b71": 41.0, # Mikelona
+        "5f47ab5b9e2edb0bb831c703": 47.0  # Bichos
     }
 
     for nombre, ruta in rutas.items():
