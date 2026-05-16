@@ -138,8 +138,8 @@ if df is not None:
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
-                    # MAGIA AQUÍ: orient="top" y columns=3 para forzar la cuadrícula arriba
-                    leyenda_config = alt.Legend(title=None, orient="top", columns=3)
+                    # SOLUCIÓN DEFINITIVA PARA MÓVIL: orient="bottom" y columns=1 (crece en vertical, libre de cortes de ancho)
+                    leyenda_config = alt.Legend(title=None, orient="bottom", columns=1)
                     
                     with tab_pos:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
@@ -287,7 +287,7 @@ if df is not None:
 
         st.markdown("---")
         st.subheader("🏅 El Medallero de Jornadas (Cielo e Infierno)")
-        st.write(f"Conteo de posiciones por jornada aplicando el filtro actual: **{temporada_sf_sel}**")
+        st.write(f"Conteo de posiciones por jornada aplicando el fango histórico: **{temporada_sf_sel}**")
         
         if not df_records.empty:
             df_medallero = df_records.copy()
