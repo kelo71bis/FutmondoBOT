@@ -67,13 +67,17 @@ if df is not None:
         # Filtramos la temporada elegida
         df_temp = df[df['Temporada'] == temporada_sel].copy()
         
-        # 🛡️ CONDICIÓN ESPECIAL: TEMPORADA 2024/25 (Muestra solo tabla)
+        # 🛡️ CONDICIÓN ESPECIAL: TEMPORADA 2024/25
         if temporada_sel == "2024/25":
             st.subheader("📊 Tabla Final (Temporada 2024/25)")
             df_clasif = df_temp.sort_values(by="Puntos_Acumulados", ascending=False)
             df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
-            df_mostrar.index = df_mostrar.index + 1 
             df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
+            
+            # 🧊 Congelamos Posición y Mánager
+            df_mostrar.index = df_mostrar.index + 1 
+            df_mostrar.index.name = "Pos."
+            df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
             
             col_tabla, col_info = st.columns([1, 1.8])
             with col_tabla:
@@ -83,7 +87,6 @@ if df is not None:
                 
         # 🚀 COMPORTAMIENTO NORMAL (Otras temporadas)
         else:
-            # 🧮 CALCULAMOS AMBAS POSICIONES JORNADA A JORNADA (Sobre el total real de la temporada)
             df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
             df_temp['Posición_Jornada'] = df_temp.groupby('Jornada')['Puntos'].rank(method='min', ascending=False).astype(int)
             
@@ -93,7 +96,6 @@ if df is not None:
             with col_sl1:
                 rango_jornadas = st.slider("🔍 Rango de Jornadas en Gráficas", 1, jornada_maxima, (1, jornada_maxima))
             with col_sl2:
-                # 🕵️‍♂️ EL NUEVO SUPER FILTRO DE MÁNAGERS/EQUIPOS
                 lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
                 managers_seleccionados = st.multiselect(
                     "👥 Filtrar Equipos en Gráfica:", 
@@ -106,14 +108,18 @@ if df is not None:
                 st.subheader(f"📊 Tabla (Jornada {jornada_maxima})")
                 df_clasif = df_temp[df_temp['Jornada'] == jornada_maxima].sort_values(by="Puntos_Acumulados", ascending=False)
                 df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
-                df_mostrar.index = df_mostrar.index + 1 
                 df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
+                
+                # 🧊 Congelamos Posición y Mánager
+                df_mostrar.index = df_mostrar.index + 1 
+                df_mostrar.index.name = "Pos."
+                df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
+                
                 st.dataframe(df_mostrar, use_container_width=True)
                 
             with col2:
                 st.subheader("📈 Análisis de Evolución")
                 
-                # 🧪 APLICAMOS AMBOS FILTROS: Rango de Jornadas Y Mánagers Seleccionados
                 df_temp_grafica = df_temp[
                     (df_temp['Jornada'] >= rango_jornadas[0]) & 
                     (df_temp['Jornada'] <= rango_jornadas[1]) &
@@ -121,7 +127,6 @@ if df is not None:
                 ]
                 
                 if not df_temp_grafica.empty:
-                    # 🗂️ LAS 4 PESTAÑAS DE ANÁLISIS
                     tab_pos, tab_pos_jor, tab_pts_acu, tab_pts_jor = st.tabs([
                         "🎢 Posición Acumulada", 
                         "🎯 Posición en Jornada", 
@@ -129,11 +134,9 @@ if df is not None:
                         "⚡ Puntos en Jornada"
                     ])
                     
-                    # El límite visual de las posiciones siempre se basa en el total de la liga
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
-                    # PESTAÑA 1: EVOLUCIÓN DE POSICIÓN ACUMULADA
                     with tab_pos:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                             x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
@@ -146,7 +149,6 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_posiciones, use_container_width=True)
                         
-                    # PESTAÑA 2: POSICIÓN DE LA JORNADA AISLADA
                     with tab_pos_jor:
                         grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                             x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
@@ -159,7 +161,6 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_pos_jornada, use_container_width=True)
                         
-                    # PESTAÑA 3: PUNTOS ACUMULADOS (CON LÍMITES DINÁMICOS ADAPTATIVOS)
                     with tab_pts_acu:
                         min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
                         max_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].max())
@@ -175,7 +176,6 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_acu, use_container_width=True)
                         
-                    # PESTAÑA 4: PUNTOS DE LA JORNADA AISLADA
                     with tab_pts_jor:
                         min_pts_jor = int(df_temp_grafica['Puntos'].min())
                         max_pts_jor = int(df_temp_grafica['Puntos'].max())
@@ -246,7 +246,11 @@ if df is not None:
                     if len(top10_mejores) > 3:
                         st.caption("Puestos del 4 al 10:")
                         df_resto_mejores = top10_mejores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
+                        
+                        # 🧊 Congelamos Posición y Mánager
                         df_resto_mejores.index = range(4, 4 + len(df_resto_mejores))
+                        df_resto_mejores.index.name = "Pos."
+                        df_resto_mejores = df_resto_mejores.reset_index().set_index(['Pos.', 'Mánager'])
                         st.dataframe(df_resto_mejores, use_container_width=True)
                 
             with col2:
@@ -271,7 +275,11 @@ if df is not None:
                     if len(top10_peores) > 3:
                         st.caption("Puestos del 4 al 10:")
                         df_resto_peores = top10_peores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
+                        
+                        # 🧊 Congelamos Posición y Mánager
                         df_resto_peores.index = range(4, 4 + len(df_resto_peores))
+                        df_resto_peores.index.name = "Pos."
+                        df_resto_peores = df_resto_peores.reset_index().set_index(['Pos.', 'Mánager'])
                         st.dataframe(df_resto_peores, use_container_width=True)
                 st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
 
@@ -297,8 +305,12 @@ if df is not None:
                 '💩 Últimos': df_ultimos
             }).fillna(0).astype(int)
             
+            # 🧊 Congelamos Posición y Mánager
             tabla_medallas = tabla_medallas.sort_values(by=['🥇 1º (Oros)', '🥈 2º (Platas)'], ascending=[False, False]).reset_index()
             tabla_medallas.index = tabla_medallas.index + 1
+            tabla_medallas.index.name = "Pos."
+            tabla_medallas = tabla_medallas.reset_index().set_index(['Pos.', 'Mánager'])
+            
             st.dataframe(tabla_medallas, use_container_width=True)
 
     # ==========================================
@@ -358,11 +370,14 @@ if df is not None:
             if 'Ligas' not in tabla_titulos.columns: tabla_titulos['Ligas'] = 0
             if 'Copas' not in tabla_titulos.columns: tabla_titulos['Copas'] = 0
             
+            # 🧊 Congelamos Posición y Mánager
             tabla_titulos['Total Títulos'] = tabla_titulos['Ligas'] + tabla_titulos['Copas']
             tabla_titulos = tabla_titulos.sort_values(by=['Total Títulos', 'Ligas'], ascending=[False, False]).reset_index(drop=True)
             tabla_titulos.index = tabla_titulos.index + 1
+            tabla_titulos.index.name = "Pos."
+            tabla_titulos = tabla_titulos.reset_index().set_index(['Pos.', 'Mánager'])
             
-            st.dataframe(tabla_titulos[['Mánager', 'Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
+            st.dataframe(tabla_titulos[['Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
 
     elif menu in ["👤 Perfiles (Próximamente)", "⚔️ Cara a Cara (Próximamente)"]:
         st.title(menu)
