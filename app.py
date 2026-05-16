@@ -112,7 +112,7 @@ if df is not None:
             st.session_state.pantalla = "🏠 Menú Principal"
             st.rerun()
             
-        st.title("🏠 Clasificación Actual")
+        st.title("📈 Clasificación Actual")
         st.markdown("---")
         
         col_filtros, col_vacio = st.columns([1, 3])
