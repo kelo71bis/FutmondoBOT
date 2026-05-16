@@ -40,7 +40,7 @@ if df is not None:
     if 'pantalla' not in st.session_state:
         st.session_state.pantalla = "🏠 Menú Principal"
 
-    # 🗂️ BARRA LATERAL (Actúa como acceso rápido secundario)
+    # 🗂️ BARRA LATERAL (Corregida para evitar bucles de navegación)
     st.sidebar.title("⚽ Menú de Liga")
     opciones_sidebar = [
         "🏠 Menú Principal",
@@ -50,11 +50,14 @@ if df is not None:
         "👤 Perfiles (Próximamente)", 
         "⚔️ Cara a Cara (Próximamente)"
     ]
-    # Sincronizamos la barra lateral con el estado de la app
-    idx_actual = opciones_sidebar.index(st.session_state.pantalla) if st.session_state.pantalla in opciones_sidebar else 0
-    menu_sidebar = st.sidebar.radio("Navegación Rápida", opciones_sidebar, index=idx_actual, key="sidebar_nav")
     
-    # Si el usuario toca la barra lateral, actualizamos la pantalla global
+    # Buscamos en qué posición está la pantalla actual para que la barra lateral la marque
+    idx_actual = opciones_sidebar.index(st.session_state.pantalla) if st.session_state.pantalla in opciones_sidebar else 0
+    
+    # Usamos un truco: quitamos el 'key' automático y controlamos el cambio de forma limpia
+    menu_sidebar = st.sidebar.radio("Navegación Rápida", opciones_sidebar, index=idx_actual)
+    
+    # Solo si el usuario hace clic EXPRESAMENTE en la barra lateral, cambiamos de pantalla
     if menu_sidebar != st.session_state.pantalla:
         st.session_state.pantalla = menu_sidebar
         st.rerun()
