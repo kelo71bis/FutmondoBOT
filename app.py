@@ -104,7 +104,7 @@ if df is not None:
                     y=alt.Y('Posición:Q', 
                             scale=alt.Scale(domain=[num_managers, 1]), 
                             title='Posición', 
-                            axis=alt.Axis(values=lista_posiciones, tickMinStep=1)), # <- Forzamos a pintar cada número
+                            axis=alt.Axis(values=lista_posiciones, format='d', tickMinStep=1)), # <- Forzamos a pintar cada número
                     color=alt.Color('Mánager:N', legend=alt.Legend(title="Equipos", orient="right")),
                     tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
                 ).properties(height=420)
