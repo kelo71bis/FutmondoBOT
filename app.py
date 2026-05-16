@@ -84,27 +84,30 @@ if df is not None:
             st.line_chart(df_grafica, height=420)
 
     # ==========================================
-    # PANTALLA 2: SALÓN DE LA FAMA (CON MULTI-FILTRO)
+    # PANTALLA 2: SALÓN DE LA FAMA (VUELTA AL FILTRO LIMPIO)
     # ==========================================
     elif menu == "🏆 Salón de la Fama":
         st.title("🏆 El Salón de la Fama")
-        st.write("Consulta los mejores y peores registros históricos o fíltralos por las temporadas que elijas.")
+        st.write("Consulta los mejores y peores registros históricos o fíltralos por una temporada concreta.")
         st.markdown("---")
         
         # Base de datos limpia de anomalías
         df_base_records = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26')) & (df['Temporada'] != '2024/25')]
         
-        # 📅 FILTRO MULTI-SELECTOR DE TEMPORADAS
-        col_filtro_sf, _ = st.columns([2, 2]) # Columna más ancha para las etiquetas múltiples
+        # 📅 FILTRO SELECTOR DE OPCIÓN ÚNICA (Limpio y directo)
+        col_filtro_sf, _ = st.columns([1, 3])
         with col_filtro_sf:
-            lista_temporadas = sorted(df_base_records['Temporada'].unique().tolist(), reverse=True)
-            temporadas_sf_sel = st.multiselect("📅 Filtrar por Temporadas:", lista_temporadas, default=lista_temporadas)
+            lista_temporadas = ["Todas las temporadas"] + sorted(df_base_records['Temporada'].unique().tolist(), reverse=True)
+            temporada_sf_sel = st.selectbox("📅 Filtrar por Temporada:", lista_temporadas, index=0)
             
         # Aplicar filtro según selección
-        df_records = df_base_records[df_base_records['Temporada'].isin(temporadas_sf_sel)]
+        if temporada_sf_sel != "Todas las temporadas":
+            df_records = df_base_records[df_base_records['Temporada'] == temporada_sf_sel]
+        else:
+            df_records = df_base_records
+            
         df_desastres = df_records[df_records['Puntos'] > 0]
         
-        # Comprobar si hay datos tras el filtro
         if not df_records.empty:
             limite_mejores = min(10, len(df_records))
             limite_peores = min(10, len(df_desastres))
@@ -139,8 +142,6 @@ if df is not None:
                         df_resto_mejores = top10_mejores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
                         df_resto_mejores.index = range(4, 4 + len(df_resto_mejores))
                         st.dataframe(df_resto_mejores, use_container_width=True)
-                else:
-                    st.write("No hay registros de puntuaciones altas para este filtro.")
                 
             # 🔴 TOP 10 PEORES
             with col2:
@@ -167,17 +168,12 @@ if df is not None:
                         df_resto_peores = top10_peores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
                         df_resto_peores.index = range(4, 4 + len(df_resto_peores))
                         st.dataframe(df_resto_peores, use_container_width=True)
-                else:
-                    st.write("No hay registros de puntuaciones bajas para este filtro.")
                 st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
-        else:
-            st.warning("⚠️ No hay datos disponibles para las temporadas seleccionadas. Por favor, selecciona al menos una.")
 
         # 🏅 MEDALLERO DE JORNADAS (CIELO E INFIERNO)
         st.markdown("---")
         st.subheader("🏅 El Medallero de Jornadas (Cielo e Infierno)")
-        texto_temporadas = ", ".join(temporadas_sf_sel) if temporadas_sf_sel else "Ninguna"
-        st.write(f"Conteo de posiciones por jornada aplicando el filtro actual: **{texto_temporadas}**")
+        st.write(f"Conteo de posiciones por jornada aplicando el filtro actual: **{temporada_sf_sel}**")
         
         if not df_records.empty:
             df_medallero = df_records.copy()
