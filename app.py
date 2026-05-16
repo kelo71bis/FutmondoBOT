@@ -20,7 +20,6 @@ def cargar_datos():
         df_prop = pd.read_excel(ruta_propietarios)
         mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
         
-        # 🔄 TODO AUTOMÁTICO: Arsenati ya se traduce solo aquí porque existe en el maestro
         df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
         
         if os.path.exists(ruta_ligas):
@@ -85,29 +84,77 @@ if df is not None:
             st.line_chart(df_grafica, height=420)
 
     # ==========================================
-    # PANTALLA 2: SALÓN DE LA FAMA
+    # PANTALLA 2: SALÓN DE LA FAMA (¡REDISEÑADO!)
     # ==========================================
     elif menu == "🏆 Salón de la Fama":
         st.title("🏆 El Salón de la Fama")
+        st.write("El Top 10 histórico de las mejores y peores jornadas de la Liga Santanguissa.")
         st.markdown("---")
         
+        # Filtros de datos
         df_records = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26')) & (df['Temporada'] != '2024/25')]
+        df_desastres = df_records[df_records['Puntos'] > 0]
+        
+        # Calcular los Top 10
+        top10_mejores = df_records.nlargest(10, 'Puntos').reset_index(drop=True)
+        top10_peores = df_desastres.nsmallest(10, 'Puntos').reset_index(drop=True)
         
         col1, col2 = st.columns(2)
+        
+        # 🟢 TOP 10 MEJORES
         with col1:
-            st.subheader("🚀 La Mayor Exhibición")
-            mejor_jornada = df_records.loc[df_records['Puntos'].idxmax()]
-            st.success(f"**{mejor_jornada['Mánager']}**")
-            st.metric(label=f"Jornada {int(mejor_jornada['Jornada'])} ({mejor_jornada['Temporada']})", value=f"{mejor_jornada['Puntos']} pts")
+            st.subheader("🚀 Las Mejores Exhibiciones")
             
+            # TOP 1 (Grande)
+            top1 = top10_mejores.iloc[0]
+            st.success(f"🥇 **{top1['Mánager']}**")
+            st.metric(label=f"Jornada {int(top1['Jornada'])} ({top1['Temporada']})", value=f"{top1['Puntos']} pts")
+            
+            # TOP 2 y 3 (Medianos)
+            c_top2, c_top3 = st.columns(2)
+            with c_top2:
+                top2 = top10_mejores.iloc[1]
+                st.info(f"🥈 **{top2['Mánager']}**")
+                st.markdown(f"**{top2['Puntos']} pts** (J{int(top2['Jornada'])} - {top2['Temporada']})")
+            with c_top3:
+                top3 = top10_mejores.iloc[2]
+                st.info(f"🥉 **{top3['Mánager']}**")
+                st.markdown(f"**{top3['Puntos']} pts** (J{int(top3['Jornada'])} - {top3['Temporada']})")
+                
+            # TOP 4 al 10 (Tabla normal)
+            st.caption("Puestos del 4 al 10:")
+            df_resto_mejores = top10_mejores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
+            df_resto_mejores.index = range(4, 11)
+            st.dataframe(df_resto_mejores, use_container_width=True)
+            
+        # 🔴 TOP 10 PEORES
         with col2:
-            st.subheader("💩 El Mayor Desastre")
-            df_desastres = df_records[df_records['Puntos'] > 0]
-            if not df_desastres.empty:
-                peor_jornada = df_desastres.loc[df_desastres['Puntos'].idxmin()]
-                st.error(f"**{peor_jornada['Mánager']}**")
-                st.metric(label=f"Jornada {int(peor_jornada['Jornada'])} ({peor_jornada['Temporada']})", value=f"{peor_jornada['Puntos']} pts")
-            st.caption("ℹ️ *No se tienen en cuenta las jornadas con 0 puntos o puntuación negativa.*")
+            st.subheader("💩 Los Mayores Desastres")
+            
+            if not top10_peores.empty:
+                # TOP 1 (Grande)
+                bot1 = top10_peores.iloc[0]
+                st.error(f"🥇 **{bot1['Mánager']}**")
+                st.metric(label=f"Jornada {int(bot1['Jornada'])} ({bot1['Temporada']})", value=f"{bot1['Puntos']} pts")
+                
+                # TOP 2 y 3 (Medianos)
+                c_bot2, c_bot3 = st.columns(2)
+                with c_bot2:
+                    bot2 = top10_peores.iloc[1]
+                    st.warning(f"🥈 **{bot2['Mánager']}**")
+                    st.markdown(f"**{bot2['Puntos']} pts** (J{int(bot2['Jornada'])} - {bot2['Temporada']})")
+                with c_bot3:
+                    bot3 = top10_peores.iloc[2]
+                    st.warning(f"🥉 **{bot3['Mánager']}**")
+                    st.markdown(f"**{bot3['Puntos']} pts** (J{int(bot3['Jornada'])} - {bot3['Temporada']})")
+                    
+                # TOP 4 al 10 (Tabla normal)
+                st.caption("Puestos del 4 al 10:")
+                df_resto_peores = top10_peores.iloc[3:][['Mánager', 'Puntos', 'Jornada', 'Temporada']]
+                df_resto_peores.index = range(4, 11)
+                st.dataframe(df_resto_peores, use_container_width=True)
+            
+            st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
 
         st.markdown("---")
         st.subheader("🏅 El Medallero de Jornadas (MVPs)")
@@ -127,7 +174,6 @@ if df is not None:
         
         col_liga, col_copa = st.columns(2)
         
-        # 1. Mostrar las Ligas
         with col_liga:
             st.subheader("🏆 Campeones de Liga")
             if df_ligas is not None:
@@ -140,7 +186,6 @@ if df is not None:
             else:
                 st.warning("⚠️ No se ha generado el palmarés de liga.")
 
-        # 2. Mostrar las Copas
         with col_copa:
             st.subheader("🏆 Campeones de Copa")
             if df_copas is not None:
@@ -156,7 +201,6 @@ if df is not None:
             else:
                 st.warning("⚠️ No se ha encontrado el palmarés de copas.")
                 
-        # 3. Recuento Total de Títulos
         st.markdown("---")
         st.subheader("👑 Reyes de la Liga (Recuento de Títulos)")
         
