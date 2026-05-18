@@ -40,7 +40,7 @@ if df is not None:
     if 'pantalla' not in st.session_state:
         st.session_state.pantalla = "🏠 Menú Principal"
 
-    # 🗂️ BARRA LATERAL (Corregida para evitar bucles de navegación)
+    # 🗂️ BARRA LATERAL
     st.sidebar.title("⚽ Menú de Liga")
     opciones_sidebar = [
         "🏠 Menú Principal",
@@ -51,13 +51,9 @@ if df is not None:
         "⚔️ Cara a Cara (Próximamente)"
     ]
     
-    # Buscamos en qué posición está la pantalla actual para que la barra lateral la marque
     idx_actual = opciones_sidebar.index(st.session_state.pantalla) if st.session_state.pantalla in opciones_sidebar else 0
-    
-    # Usamos un truco: quitamos el 'key' automático y controlamos el cambio de forma limpia
     menu_sidebar = st.sidebar.radio("Navegación Rápida", opciones_sidebar, index=idx_actual)
     
-    # Solo si el usuario hace clic EXPRESAMENTE en la barra lateral, cambiamos de pantalla
     if menu_sidebar != st.session_state.pantalla:
         st.session_state.pantalla = menu_sidebar
         st.rerun()
@@ -78,7 +74,6 @@ if df is not None:
         
         st.write("Selecciona una sección para empezar a analizar los datos:")
         
-        # Cuadrícula de botones grandes y visuales
         c1, c2 = st.columns(2)
         with c1:
             if st.button("📈 Análisis por temporadas", use_container_width=True):
@@ -86,7 +81,7 @@ if df is not None:
                 st.rerun()
             st.caption("Consulta las tablas dinámicas por jornada y el scalextric de gráficas temporales.")
             
-            st.markdown("##") # Espaciado
+            st.markdown("##")
             if st.button("🥇 Vitrina de Trofeos e Historial", use_container_width=True):
                 st.session_state.pantalla = "🥇 Palmarés Histórico"
                 st.rerun()
@@ -98,7 +93,7 @@ if df is not None:
                 st.rerun()
             st.caption("El Top 10 histórico de las mayores exhibiciones y los desastres más estrepitosos.")
             
-            st.markdown("##") # Espaciado
+            st.markdown("##")
             if st.button("⚔️ Cara a Cara (Próximamente)", use_container_width=True):
                 st.session_state.pantalla = "⚔️ Cara a Cara (Próximamente)"
                 st.rerun()
@@ -108,9 +103,12 @@ if df is not None:
     # PANTALLA 1: ANÁLISIS POR TEMPORADAS
     # ==========================================
     elif st.session_state.pantalla == "📈 Análisis por temporadas":
-        if st.button("⬅️ Volver al Menú Principal"):
-            st.session_state.pantalla = "🏠 Menú Principal"
-            st.rerun()
+        # 🧭 BARRA DE NAVEGACIÓN SUPERIOR
+        c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
+        if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
+        if c_nav2.button("🏆 Salón de la Fama", use_container_width=True): st.session_state.pantalla = "🏆 Salón de la Fama"; st.rerun()
+        if c_nav3.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
+        if c_nav4.button("⚔️ Cara a Cara", use_container_width=True): st.session_state.pantalla = "⚔️ Cara a Cara (Próximamente)"; st.rerun()
             
         st.title("📈 Análisis por temporadas")
         st.markdown("---")
@@ -122,7 +120,6 @@ if df is not None:
         
         df_temp = df[df['Temporada'] == temporada_sel].copy()
         
-        # 🛡️ CONDICIÓN ESPECIAL: TEMPORADA 2024/25
         if temporada_sel == "2024/25":
             st.subheader("📊 Tabla Final (Temporada 2024/25)")
             jornada_max_2425 = df_temp['Jornada'].max()
@@ -141,7 +138,6 @@ if df is not None:
             with col_info:
                 st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas de evolución temporal por jornada no están habilitadas.")
                 
-        # 🚀 COMPORTAMIENTO NORMAL
         else:
             df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
             df_temp['Posición_Jornada'] = df_temp.groupby('Jornada')['Puntos'].rank(method='min', ascending=False).astype(int)
@@ -150,7 +146,6 @@ if df is not None:
             
             col1, col2 = st.columns([1, 1.8])
             
-            # COLUMNA IZQUIERDA
             with col1:
                 rango_jornadas = st.slider("🔍 Rango de Jornadas", 1, jornada_maxima, (1, jornada_maxima))
                 jornada_seleccionada = rango_jornadas[1] 
@@ -166,16 +161,19 @@ if df is not None:
                 
                 st.dataframe(df_mostrar, use_container_width=True)
                 
-            # COLUMNA DERECHA
             with col2:
                 lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
                 managers_seleccionados = st.multiselect(
-                    "👥 Filtrar Equipos en Gráficas:", 
+                    "👥 Filtrar Equipos en Gráficas (vacío = Todos):", 
                     lista_managers_disponibles, 
-                    default=lista_managers_disponibles
+                    default=lista_managers_disponibles,
+                    placeholder="Todos los equipos"
                 )
                 
-                # 💡 LA NOTA EXPLICATIVA
+                # 🛡️ TRUCO MAGIA: Si vacían el filtro, asumimos que quieren verlos todos
+                if len(managers_seleccionados) == 0:
+                    managers_seleccionados = lista_managers_disponibles
+                
                 st.caption("💡 *Tip: Usa el buscador de equipos de arriba y el deslizador de jornadas para aislar trayectorias y ver el gráfico mucho más limpio.*")
                 
                 st.subheader("📈 Análisis de Evolución")
@@ -197,7 +195,6 @@ if df is not None:
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     
-                    # MAGIA AQUÍ: orient="bottom" y columns=2
                     leyenda_config = alt.Legend(title=None, orient="bottom", columns=2)
                     
                     with tab_pos:
@@ -253,32 +250,41 @@ if df is not None:
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_jor, use_container_width=True)
-                else:
-                    st.warning("⚠️ Selecciona al menos un mánager en el filtro para pintar las gráficas.")
 
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
     # ==========================================
     elif st.session_state.pantalla == "🏆 Salón de la Fama":
-        if st.button("⬅️ Volver al Menú Principal"):
-            st.session_state.pantalla = "🏠 Menú Principal"
-            st.rerun()
+        # 🧭 BARRA DE NAVEGACIÓN SUPERIOR
+        c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
+        if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
+        if c_nav2.button("📈 Análisis", use_container_width=True): st.session_state.pantalla = "📈 Análisis por temporadas"; st.rerun()
+        if c_nav3.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
+        if c_nav4.button("⚔️ Cara a Cara", use_container_width=True): st.session_state.pantalla = "⚔️ Cara a Cara (Próximamente)"; st.rerun()
             
         st.title("🏆 El Salón de la Fama")
-        st.write("Consulta los mejores y peores registros históricos o fíltralos por una temporada concreta.")
+        st.write("Consulta los mejores y peores registros históricos o fíltralos por temporada(s).")
         st.markdown("---")
         
         df_base_records = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26')) & (df['Temporada'] != '2024/25')]
         
         col_filtro_sf, _ = st.columns([1, 3])
         with col_filtro_sf:
-            lista_temporadas = ["Todas las temporadas"] + sorted(df_base_records['Temporada'].unique().tolist(), reverse=True)
-            temporada_sf_sel = st.selectbox("📅 Filtrar por Temporada:", lista_temporadas, index=0)
+            lista_temporadas_reales = sorted(df_base_records['Temporada'].unique().tolist(), reverse=True)
+            # 🛡️ TRUCO MAGIA: Filtro multiselect para temporadas
+            temporadas_sf_sel = st.multiselect(
+                "📅 Filtrar por Temporada(s) (vacío = Todas):", 
+                lista_temporadas_reales, 
+                default=[],
+                placeholder="Todas las temporadas"
+            )
             
-        if temporada_sf_sel != "Todas las temporadas":
-            df_records = df_base_records[df_base_records['Temporada'] == temporada_sf_sel]
+        if len(temporadas_sf_sel) > 0:
+            df_records = df_base_records[df_base_records['Temporada'].isin(temporadas_sf_sel)]
+            texto_filtro = ", ".join(temporadas_sf_sel)
         else:
             df_records = df_base_records
+            texto_filtro = "Todas las temporadas"
             
         df_desastres = df_records[df_records['Puntos'] > 0]
         
@@ -350,7 +356,8 @@ if df is not None:
 
         st.markdown("---")
         st.subheader("🏅 El Medallero de Jornadas (y retratadas)")
-        st.write(f"Los mejores y peores de cada jornada, aplicando el filtro actual: **{temporada_sf_sel}**")
+        # Texto dinámico en base al multiselect
+        st.write(f"Los mejores y peores de cada jornada, aplicando el fango histórico: **{texto_filtro}**")
         
         if not df_records.empty:
             df_medallero = df_records.copy()
@@ -381,9 +388,12 @@ if df is not None:
     # PANTALLA 3: PALMARÉS HISTÓRICO
     # ==========================================
     elif st.session_state.pantalla == "🥇 Palmarés Histórico":
-        if st.button("⬅️ Volver al Menú Principal"):
-            st.session_state.pantalla = "🏠 Menú Principal"
-            st.rerun()
+        # 🧭 BARRA DE NAVEGACIÓN SUPERIOR
+        c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
+        if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
+        if c_nav2.button("📈 Análisis", use_container_width=True): st.session_state.pantalla = "📈 Análisis por temporadas"; st.rerun()
+        if c_nav3.button("🏆 Salón Fama", use_container_width=True): st.session_state.pantalla = "🏆 Salón de la Fama"; st.rerun()
+        if c_nav4.button("⚔️ Cara a Cara", use_container_width=True): st.session_state.pantalla = "⚔️ Cara a Cara (Próximamente)"; st.rerun()
             
         st.title("🥇 Vitrina de Trofeos")
         st.markdown("---")
@@ -447,9 +457,13 @@ if df is not None:
             st.dataframe(tabla_titulos[['Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
 
     elif st.session_state.pantalla in ["👤 Perfiles (Próximamente)", "⚔️ Cara a Cara (Próximamente)"]:
-        if st.button("⬅️ Volver al Menú Principal"):
-            st.session_state.pantalla = "🏠 Menú Principal"
-            st.rerun()
+        # 🧭 BARRA DE NAVEGACIÓN SUPERIOR
+        c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
+        if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
+        if c_nav2.button("📈 Análisis", use_container_width=True): st.session_state.pantalla = "📈 Análisis por temporadas"; st.rerun()
+        if c_nav3.button("🏆 Salón Fama", use_container_width=True): st.session_state.pantalla = "🏆 Salón de la Fama"; st.rerun()
+        if c_nav4.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
+            
         st.title(st.session_state.pantalla)
         st.info("🚧 Estamos trabajando en esta sección. Te jodes")
 
