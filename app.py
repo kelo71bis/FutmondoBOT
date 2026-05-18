@@ -165,16 +165,15 @@ if df is not None:
                 managers_seleccionados = st.multiselect(
                     "👥 Filtrar Equipos en Gráficas:", 
                     lista_managers_disponibles, 
-                    default=lista_managers_disponibles,
-                    placeholder="Todos los equipos seleccionados"
+                    default=[], # <-- Ahora viene vacío por defecto
+                    placeholder="Todos los equipos (selecciona para aislar)"
                 )
                 
+                # Salvavidas: si vacían el filtro, asumimos todos
                 if len(managers_seleccionados) == 0:
                     managers_seleccionados = lista_managers_disponibles
                 
                 st.caption("💡 *Tip: Usa el buscador de equipos de arriba y el deslizador de jornadas para aislar trayectorias y ver el gráfico mucho más limpio.*")
-                
-                st.subheader("📈 Análisis de Evolución")
                 
                 df_temp_grafica = df_temp[
                     (df_temp['Jornada'] >= rango_jornadas[0]) & 
@@ -183,21 +182,15 @@ if df is not None:
                 ]
                 
                 if not df_temp_grafica.empty:
-                    # Estructura de 6 pestañas: primero 3 de jornada, luego 3 de acumulado
-                    tab_pos_jor, tab_pts_jor, tab_mat_jor, tab_pos_acu, tab_pts_acu, tab_mat_acu = st.tabs([
-                        "🎯 Posición (Jornada)", 
-                        "⚡ Puntos (Jornada)", 
-                        "🔢 Matriz (Jornada)",
-                        "🎢 Posición (Acumulado)", 
-                        "📈 Puntos (Acumulado)",
-                        "🔢 Matriz (Acumulado)"
-                    ])
-                    
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     leyenda_config = alt.Legend(title=None, orient="bottom", columns=2)
                     
-                    # 1. POSICIÓN (JORNADA)
+                    # --- BLOQUE 1: ANÁLISIS DE LA JORNADA ---
+                    st.markdown("---")
+                    st.subheader("⚡ Análisis de la Jornada Aislada")
+                    tab_pos_jor, tab_pts_jor, tab_mat_jor = st.tabs(["🎯 Posición", "⚡ Puntos", "🔢 Matriz"])
+                    
                     with tab_pos_jor:
                         grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                             x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
@@ -210,7 +203,6 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_pos_jornada, use_container_width=True)
 
-                    # 2. PUNTOS (JORNADA)
                     with tab_pts_jor:
                         min_pts_jor = int(df_temp_grafica['Puntos'].min())
                         max_pts_jor = int(df_temp_grafica['Puntos'].max())
@@ -226,12 +218,15 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_jor, use_container_width=True)
 
-                    # 3. MATRIZ (JORNADA)
                     with tab_mat_jor:
                         df_matriz_jor = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición_Jornada')
                         st.dataframe(df_matriz_jor.style.format(precision=0, na_rep="-"), use_container_width=True)
 
-                    # 4. POSICIÓN (ACUMULADO)
+                    # --- BLOQUE 2: ANÁLISIS ACUMULADO ---
+                    st.markdown("---")
+                    st.subheader("📊 Análisis Acumulado (Clasificación General)")
+                    tab_pos_acu, tab_pts_acu, tab_mat_acu = st.tabs(["🎢 Posición", "📈 Puntos", "🔢 Matriz"])
+                    
                     with tab_pos_acu:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                             x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
@@ -244,7 +239,6 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_posiciones, use_container_width=True)
 
-                    # 5. PUNTOS (ACUMULADO) - ¡Con Zoom!
                     with tab_pts_acu:
                         min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
                         max_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].max())
@@ -260,10 +254,12 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_acu.interactive(), use_container_width=True)
 
-                    # 6. MATRIZ (ACUMULADO)
                     with tab_mat_acu:
                         df_matriz_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición')
                         st.dataframe(df_matriz_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
+
+                else:
+                    st.warning("⚠️ Selecciona al menos un mánager en el filtro para pintar los análisis.")
 
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
@@ -370,55 +366,83 @@ if df is not None:
         df_rachas['Pos_Acum'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=False)
         df_rachas['Pos_Acum_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=True)
         
+        # Calcular rachas lider general con rango
         df_lideres = df_rachas[df_rachas['Pos_Acum'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
         df_lideres['Grupo_Racha'] = (df_lideres['Jornada'] != df_lideres['Jornada'].shift() + 1).cumsum()
-        rachas_lider = df_lideres.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
-        top10_rachas_lider = rachas_lider.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
+        rachas_lider = df_lideres.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).agg(
+            Jornadas_Seguidas=('Jornada', 'size'),
+            J_Inicio=('Jornada', 'min'),
+            J_Fin=('Jornada', 'max')
+        ).reset_index()
+        rachas_lider['Rango'] = "J" + rachas_lider['J_Inicio'].astype(int).astype(str) + " - J" + rachas_lider['J_Fin'].astype(int).astype(str)
+        top10_rachas_lider = rachas_lider.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']]
+        top10_rachas_lider.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada']
         
+        # Calcular rachas ultimo general con rango
         df_ultimos_streak = df_rachas[df_rachas['Pos_Acum_Peor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
         df_ultimos_streak['Grupo_Racha'] = (df_ultimos_streak['Jornada'] != df_ultimos_streak['Jornada'].shift() + 1).cumsum()
-        rachas_ultimo = df_ultimos_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
-        top10_rachas_ultimo = rachas_ultimo.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
+        rachas_ultimo = df_ultimos_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).agg(
+            Jornadas_Seguidas=('Jornada', 'size'),
+            J_Inicio=('Jornada', 'min'),
+            J_Fin=('Jornada', 'max')
+        ).reset_index()
+        rachas_ultimo['Rango'] = "J" + rachas_ultimo['J_Inicio'].astype(int).astype(str) + " - J" + rachas_ultimo['J_Fin'].astype(int).astype(str)
+        top10_rachas_ultimo = rachas_ultimo.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']]
+        top10_rachas_ultimo.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada']
 
         # --- Rachas en la Jornada Aislada ---
         df_rachas['Pos_Jor_Mejor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
         df_rachas['Pos_Jor_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=True)
         
+        # Calcular MVP con rango
         df_mvp_streak = df_rachas[df_rachas['Pos_Jor_Mejor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
         df_mvp_streak['Grupo_Racha'] = (df_mvp_streak['Jornada'] != df_mvp_streak['Jornada'].shift() + 1).cumsum()
-        rachas_mvp = df_mvp_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
-        top10_rachas_mvp = rachas_mvp.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
+        rachas_mvp = df_mvp_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).agg(
+            Jornadas_Seguidas=('Jornada', 'size'),
+            J_Inicio=('Jornada', 'min'),
+            J_Fin=('Jornada', 'max')
+        ).reset_index()
+        rachas_mvp['Rango'] = "J" + rachas_mvp['J_Inicio'].astype(int).astype(str) + " - J" + rachas_mvp['J_Fin'].astype(int).astype(str)
+        top10_rachas_mvp = rachas_mvp.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']]
+        top10_rachas_mvp.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada']
         
+        # Calcular Peor de la jornada con rango
         df_peor_streak = df_rachas[df_rachas['Pos_Jor_Peor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
         df_peor_streak['Grupo_Racha'] = (df_peor_streak['Jornada'] != df_peor_streak['Jornada'].shift() + 1).cumsum()
-        rachas_peor_jor = df_peor_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
-        top10_rachas_peor_jor = rachas_peor_jor.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
+        rachas_peor_jor = df_peor_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).agg(
+            Jornadas_Seguidas=('Jornada', 'size'),
+            J_Inicio=('Jornada', 'min'),
+            J_Fin=('Jornada', 'max')
+        ).reset_index()
+        rachas_peor_jor['Rango'] = "J" + rachas_peor_jor['J_Inicio'].astype(int).astype(str) + " - J" + rachas_peor_jor['J_Fin'].astype(int).astype(str)
+        top10_rachas_peor_jor = rachas_peor_jor.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']]
+        top10_rachas_peor_jor.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada']
 
         # Visualización Rachas Acumuladas
-        st.subheader("En la Clasificación General (Acumulado)")
+        st.subheader("El Trono y El Pozo de la Clasificación General")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
-            st.caption("👑 **Líderes de Hierro** (Más jornadas seguidas siendo 1º)")
+            st.caption("👑 **Líderes de Hierro** (Semanas consecutivas siendo 1º)")
             top10_rachas_lider.index = range(1, 1 + len(top10_rachas_lider))
             top10_rachas_lider.index.name = "Rank"
             st.dataframe(top10_rachas_lider.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
         with col_r2:
-            st.caption("⚓ **Fango Eterno** (Más jornadas seguidas siendo último)")
+            st.caption("⚓ **Fango Eterno** (Semanas consecutivas siendo último)")
             top10_rachas_ultimo.index = range(1, 1 + len(top10_rachas_ultimo))
             top10_rachas_ultimo.index.name = "Rank"
             st.dataframe(top10_rachas_ultimo.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
 
         # Visualización Rachas Jornada Aislada
-        st.markdown("<br>", unsafe_allow_html=True) # Espacio extra
-        st.subheader("En la Jornada Aislada")
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.subheader("Héroes y Villanos del Fin de Semana")
         col_r3, col_r4 = st.columns(2)
         with col_r3:
-            st.caption("🌟 **MVP en Serie** (Jornadas consecutivas haciendo la mejor puntuación)")
+            st.caption("🌟 **MVP en Serie** (Jornadas seguidas haciendo la mejor puntuación)")
             top10_rachas_mvp.index = range(1, 1 + len(top10_rachas_mvp))
             top10_rachas_mvp.index.name = "Rank"
             st.dataframe(top10_rachas_mvp.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
         with col_r4:
-            st.caption("🤦‍♂️ **Ruina Consecutiva** (Jornadas consecutivas haciendo la peor puntuación)")
+            st.caption("🤦‍♂️ **Ruina Consecutiva** (Jornadas seguidas haciendo la peor puntuación)")
             top10_rachas_peor_jor.index = range(1, 1 + len(top10_rachas_peor_jor))
             top10_rachas_peor_jor.index.name = "Rank"
             st.dataframe(top10_rachas_peor_jor.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
