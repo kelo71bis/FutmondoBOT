@@ -166,14 +166,15 @@ if df is not None:
                     "👥 Filtrar Equipos en Gráficas:", 
                     lista_managers_disponibles, 
                     default=lista_managers_disponibles,
-                    placeholder="Todos los equipos"
+                    placeholder="Todos los equipos seleccionados"
                 )
                 
-                # Salvavidas: si vacían el filtro, asumimos todos
                 if len(managers_seleccionados) == 0:
                     managers_seleccionados = lista_managers_disponibles
                 
                 st.caption("💡 *Tip: Usa el buscador de equipos de arriba y el deslizador de jornadas para aislar trayectorias y ver el gráfico mucho más limpio.*")
+                
+                st.subheader("📈 Análisis de Evolución")
                 
                 df_temp_grafica = df_temp[
                     (df_temp['Jornada'] >= rango_jornadas[0]) & 
@@ -182,53 +183,22 @@ if df is not None:
                 ]
                 
                 if not df_temp_grafica.empty:
-                    # NUEVA ESTRUCTURA: 2 Grandes Secciones de Pestañas
-                    tab_acumulado, tab_jornada = st.tabs(["📊 Análisis Acumulado", "⚡ Análisis de Jornada"])
+                    # Estructura de 6 pestañas: primero 3 de jornada, luego 3 de acumulado
+                    tab_pos_jor, tab_pts_jor, tab_mat_jor, tab_pos_acu, tab_pts_acu, tab_mat_acu = st.tabs([
+                        "🎯 Posición (Jornada)", 
+                        "⚡ Puntos (Jornada)", 
+                        "🔢 Matriz (Jornada)",
+                        "🎢 Posición (Acumulado)", 
+                        "📈 Puntos (Acumulado)",
+                        "🔢 Matriz (Acumulado)"
+                    ])
                     
                     num_managers_total = df_temp['Mánager'].nunique()
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     leyenda_config = alt.Legend(title=None, orient="bottom", columns=2)
                     
-                    # --- SECCIÓN 1: ACUMULADO ---
-                    with tab_acumulado:
-                        st.subheader("🎢 Posición Acumulada")
-                        grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                            y=alt.Y('Posición:Q', 
-                                    scale=alt.Scale(domain=[num_managers_total, 1]), 
-                                    title='Posición Acumulada', 
-                                    axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
-                            color=alt.Color('Mánager:N', legend=leyenda_config),
-                            tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
-                        ).properties(height=420)
-                        st.altair_chart(grafica_posiciones, use_container_width=True)
-                        
-                        st.markdown("---")
-                        st.subheader("📈 Puntos Acumulados (Zoom interactivo)")
-                        min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
-                        max_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].max())
-                        margen_acu = max(20, int((max_pts_acu - min_pts_acu) * 0.05))
-                        
-                        grafica_puntos_acu = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
-                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                            y=alt.Y('Puntos_Acumulados:Q', 
-                                    scale=alt.Scale(domain=[min_pts_acu - margen_acu, max_pts_acu + margen_acu]), 
-                                    title='Puntos Acumulados'),
-                            color=alt.Color('Mánager:N', legend=leyenda_config),
-                            tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición']
-                        ).properties(height=420)
-                        # Activamos zoom/pan interactivo aquí:
-                        st.altair_chart(grafica_puntos_acu.interactive(), use_container_width=True)
-                        
-                        st.markdown("---")
-                        st.subheader("🔢 Matriz de Posiciones Acumuladas")
-                        df_matriz_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición')
-                        # Limpiar NaN y mostrar como enteros
-                        st.dataframe(df_matriz_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
-                        
-                    # --- SECCIÓN 2: JORNADA ---
-                    with tab_jornada:
-                        st.subheader("🎯 Posición en cada Jornada aislada")
+                    # 1. POSICIÓN (JORNADA)
+                    with tab_pos_jor:
                         grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
                             x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
                             y=alt.Y('Posición_Jornada:Q', 
@@ -239,9 +209,9 @@ if df is not None:
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_pos_jornada, use_container_width=True)
-                        
-                        st.markdown("---")
-                        st.subheader("⚡ Puntos obtenidos en cada Jornada")
+
+                    # 2. PUNTOS (JORNADA)
+                    with tab_pts_jor:
                         min_pts_jor = int(df_temp_grafica['Puntos'].min())
                         max_pts_jor = int(df_temp_grafica['Puntos'].max())
                         margen_jor = max(10, int((max_pts_jor - min_pts_jor) * 0.1))
@@ -255,13 +225,45 @@ if df is not None:
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_jor, use_container_width=True)
-                        
-                        st.markdown("---")
-                        st.subheader("🔢 Matriz de Posiciones por Jornada")
+
+                    # 3. MATRIZ (JORNADA)
+                    with tab_mat_jor:
                         df_matriz_jor = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición_Jornada')
                         st.dataframe(df_matriz_jor.style.format(precision=0, na_rep="-"), use_container_width=True)
-                else:
-                    st.warning("⚠️ Selecciona al menos un mánager en el filtro para pintar los análisis.")
+
+                    # 4. POSICIÓN (ACUMULADO)
+                    with tab_pos_acu:
+                        grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                            y=alt.Y('Posición:Q', 
+                                    scale=alt.Scale(domain=[num_managers_total, 1]), 
+                                    title='Posición Acumulada', 
+                                    axis=alt.Axis(values=lista_posiciones_total, format='d', tickMinStep=1)),
+                            color=alt.Color('Mánager:N', legend=leyenda_config),
+                            tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
+                        ).properties(height=420)
+                        st.altair_chart(grafica_posiciones, use_container_width=True)
+
+                    # 5. PUNTOS (ACUMULADO) - ¡Con Zoom!
+                    with tab_pts_acu:
+                        min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
+                        max_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].max())
+                        margen_acu = max(20, int((max_pts_acu - min_pts_acu) * 0.05))
+                        
+                        grafica_puntos_acu = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
+                            x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                            y=alt.Y('Puntos_Acumulados:Q', 
+                                    scale=alt.Scale(domain=[min_pts_acu - margen_acu, max_pts_acu + margen_acu]), 
+                                    title='Puntos Acumulados'),
+                            color=alt.Color('Mánager:N', legend=leyenda_config),
+                            tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados', 'Posición']
+                        ).properties(height=420)
+                        st.altair_chart(grafica_puntos_acu.interactive(), use_container_width=True)
+
+                    # 6. MATRIZ (ACUMULADO)
+                    with tab_mat_acu:
+                        df_matriz_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición')
+                        st.dataframe(df_matriz_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
 
     # ==========================================
     # PANTALLA 2: SALÓN DE LA FAMA
@@ -298,9 +300,7 @@ if df is not None:
             
         df_desastres = df_records[df_records['Puntos'] > 0]
         
-        # ----------------------------------------------------
-        # BLOQUE 1: PUNTUACIONES EN UNA JORNADA
-        # ----------------------------------------------------
+        # --- BLOQUE 1: PUNTUACIONES EN UNA JORNADA ---
         if not df_records.empty:
             limite_mejores = min(10, len(df_records))
             limite_peores = min(10, len(df_desastres))
@@ -336,15 +336,11 @@ if df is not None:
                     df_resto_peores.index.name = "Pos."
                     df_resto_peores = df_resto_peores.reset_index().set_index(['Pos.', 'Mánager'])
                     st.dataframe(df_resto_peores, use_container_width=True)
-                st.caption("ℹ️ *Nota: Se excluyen las jornadas con 0 puntos o puntuación negativa.*")
 
         st.markdown("---")
         
-        # ----------------------------------------------------
-        # BLOQUE 2: RÉCORDS DE TEMPORADA COMPLETA
-        # ----------------------------------------------------
+        # --- BLOQUE 2: RÉCORDS DE TEMPORADA COMPLETA ---
         st.header("👑 Récords de Temporada Completa")
-        # Obtenemos la última jornada de cada temporada seleccionada para tener los puntos finales
         df_finales = df_records.loc[df_records.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()].copy()
         
         col_t1, col_t2 = st.columns(2)
@@ -366,48 +362,70 @@ if df is not None:
 
         st.markdown("---")
 
-        # ----------------------------------------------------
-        # BLOQUE 3: RACHAS HISTÓRICAS
-        # ----------------------------------------------------
+        # --- BLOQUE 3: RACHAS HISTÓRICAS ---
         st.header("🔥 Rachas Históricas")
-        
-        # Calculamos la posición acumulada y la posición "peor" para cada temporada/jornada
         df_rachas = df_records.copy()
+        
+        # --- Rachas Acumuladas ---
         df_rachas['Pos_Acum'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=False)
         df_rachas['Pos_Acum_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=True)
         
-        # Rachas de Líder (Posición 1)
         df_lideres = df_rachas[df_rachas['Pos_Acum'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
         df_lideres['Grupo_Racha'] = (df_lideres['Jornada'] != df_lideres['Jornada'].shift() + 1).cumsum()
         rachas_lider = df_lideres.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
         top10_rachas_lider = rachas_lider.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
         
-        # Rachas de Último (La peor posición)
         df_ultimos_streak = df_rachas[df_rachas['Pos_Acum_Peor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
         df_ultimos_streak['Grupo_Racha'] = (df_ultimos_streak['Jornada'] != df_ultimos_streak['Jornada'].shift() + 1).cumsum()
         rachas_ultimo = df_ultimos_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
         top10_rachas_ultimo = rachas_ultimo.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
 
+        # --- Rachas en la Jornada Aislada ---
+        df_rachas['Pos_Jor_Mejor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
+        df_rachas['Pos_Jor_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=True)
+        
+        df_mvp_streak = df_rachas[df_rachas['Pos_Jor_Mejor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
+        df_mvp_streak['Grupo_Racha'] = (df_mvp_streak['Jornada'] != df_mvp_streak['Jornada'].shift() + 1).cumsum()
+        rachas_mvp = df_mvp_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
+        top10_rachas_mvp = rachas_mvp.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
+        
+        df_peor_streak = df_rachas[df_rachas['Pos_Jor_Peor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
+        df_peor_streak['Grupo_Racha'] = (df_peor_streak['Jornada'] != df_peor_streak['Jornada'].shift() + 1).cumsum()
+        rachas_peor_jor = df_peor_streak.groupby(['Mánager', 'Temporada', 'Grupo_Racha']).size().reset_index(name='Jornadas Seguidas')
+        top10_rachas_peor_jor = rachas_peor_jor.nlargest(10, 'Jornadas Seguidas')[['Mánager', 'Jornadas Seguidas', 'Temporada']]
+
+        # Visualización Rachas Acumuladas
+        st.subheader("En la Clasificación General (Acumulado)")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
-            st.subheader("👑 Líderes de Hierro")
-            st.caption("Más jornadas consecutivas siendo 1º en la clasificación.")
+            st.caption("👑 **Líderes de Hierro** (Más jornadas seguidas siendo 1º)")
             top10_rachas_lider.index = range(1, 1 + len(top10_rachas_lider))
             top10_rachas_lider.index.name = "Rank"
             st.dataframe(top10_rachas_lider.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
-            
         with col_r2:
-            st.subheader("⚓ Fango Eterno")
-            st.caption("Más jornadas consecutivas siendo el último clasificado.")
+            st.caption("⚓ **Fango Eterno** (Más jornadas seguidas siendo último)")
             top10_rachas_ultimo.index = range(1, 1 + len(top10_rachas_ultimo))
             top10_rachas_ultimo.index.name = "Rank"
             st.dataframe(top10_rachas_ultimo.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
 
+        # Visualización Rachas Jornada Aislada
+        st.markdown("<br>", unsafe_allow_html=True) # Espacio extra
+        st.subheader("En la Jornada Aislada")
+        col_r3, col_r4 = st.columns(2)
+        with col_r3:
+            st.caption("🌟 **MVP en Serie** (Jornadas consecutivas haciendo la mejor puntuación)")
+            top10_rachas_mvp.index = range(1, 1 + len(top10_rachas_mvp))
+            top10_rachas_mvp.index.name = "Rank"
+            st.dataframe(top10_rachas_mvp.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
+        with col_r4:
+            st.caption("🤦‍♂️ **Ruina Consecutiva** (Jornadas consecutivas haciendo la peor puntuación)")
+            top10_rachas_peor_jor.index = range(1, 1 + len(top10_rachas_peor_jor))
+            top10_rachas_peor_jor.index.name = "Rank"
+            st.dataframe(top10_rachas_peor_jor.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
+
         st.markdown("---")
 
-        # ----------------------------------------------------
-        # BLOQUE 4: MEDALLERO Y CLUB DE LOS 100
-        # ----------------------------------------------------
+        # --- BLOQUE 4: MEDALLERO Y CLUB DE LOS 100 ---
         col_m1, col_m2 = st.columns([1.5, 1])
         
         with col_m1:
