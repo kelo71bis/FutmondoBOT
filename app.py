@@ -185,7 +185,7 @@ if df is not None:
                     lista_posiciones_total = list(range(1, num_managers_total + 1))
                     leyenda_config = alt.Legend(title=None, orient="bottom", columns=2)
                     
-                    # --- BLOQUE 1: ANÁLISIS ACUMULADO (AQUÍ ARRIBA AHORA) ---
+                    # --- BLOQUE 1: ANÁLISIS ACUMULADO ---
                     st.markdown("---")
                     st.subheader("📊 Análisis Acumulado (Clasificación General)")
                     tab_pos_acu, tab_pts_acu, tab_mat_acu = st.tabs(["🎢 Posición", "📈 Puntos", "🔢 Matriz"])
@@ -221,7 +221,7 @@ if df is not None:
                         df_matriz_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición')
                         st.dataframe(df_matriz_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
 
-                    # --- BLOQUE 2: ANÁLISIS DE LA JORNADA (AQUÍ ABAJO AHORA) ---
+                    # --- BLOQUE 2: ANÁLISIS DE LA JORNADA ---
                     st.markdown("---")
                     st.subheader("⚡ Análisis de la Jornada Aislada")
                     tab_pos_jor, tab_pts_jor, tab_mat_jor = st.tabs(["🎯 Posición", "⚡ Puntos", "🔢 Matriz"])
@@ -553,7 +553,7 @@ if df is not None:
             st.dataframe(tabla_titulos[['Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
 
     # ==========================================
-    # PANTALLA 4: CARA A CARA (¡NUEVO!)
+    # PANTALLA 4: CARA A CARA
     # ==========================================
     elif st.session_state.pantalla == "⚔️ Cara a Cara":
         c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
@@ -565,9 +565,8 @@ if df is not None:
         st.title("⚔️ Cara a Cara (Head-to-Head)")
         st.markdown("---")
         
-        # Filtro de mánagers vacío por defecto
         lista_todos_managers = sorted(df['Mánager'].unique().tolist())
-        st.write("Elige a los contendientes para ver quién es el padre de quién históricamente:")
+        st.write("Elige a los contendientes para destripar su historial y ver quién es el padre de quién:")
         
         col_f1, col_f2 = st.columns([1, 1])
         with col_f1:
@@ -578,20 +577,20 @@ if df is not None:
             )
             
         if len(managers_h2h) < 2:
-            st.warning("⚠️ **¡Cobardes!** Selecciona al menos a dos mánagers para meterlos en la jaula de barro y ver el historial.")
+            st.warning("⚠️ **¡No seas cobarde!** Selecciona al menos a dos mánagers para meterlos en la jaula de barro y ver el historial.")
         else:
-            # 🛡️ TRUCO MAGIA: Calcular temporadas donde coincidieron TODOS los elegidos
+            # Filtro de coincidencias temporales
             df_h2h_base = df[df['Mánager'].isin(managers_h2h) & (df['Temporada'] != '2024/25')]
             temporadas_por_manager = df_h2h_base.groupby('Temporada')['Mánager'].nunique()
             temporadas_comunes = temporadas_por_manager[temporadas_por_manager == len(managers_h2h)].index.tolist()
             temporadas_comunes = sorted(temporadas_comunes, reverse=True)
             
             if not temporadas_comunes:
-                st.error("❌ Los mánagers seleccionados nunca han coincidido en la misma temporada.")
+                st.error("❌ Estos mánagers nunca han coincidido en la misma temporada (o no hay datos).")
             else:
                 with col_f2:
                     temporadas_h2h_sel = st.multiselect(
-                        "📅 Temporadas en las que han coincidido (filtra si quieres):", 
+                        "📅 Temporadas de coincidencia (filtra si quieres):", 
                         temporadas_comunes, 
                         default=temporadas_comunes
                     )
@@ -600,72 +599,141 @@ if df is not None:
                     st.warning("Selecciona al menos una temporada.")
                 else:
                     st.markdown("---")
-                    # Filtramos los datos finales para la pelea
                     df_h2h = df_h2h_base[df_h2h_base['Temporada'].isin(temporadas_h2h_sel)]
                     
-                    # 1. MATRIZ DE ENFRENTAMIENTOS (Con empates incluidos)
-                    st.subheader("🥊 Matriz de Enfrentamientos Directos")
-                    st.caption("Lee por filas: veces que el mánager de la fila le sacó más puntos en una jornada al mánager de la columna. *(Los empates suman +1 para ambos)*.")
+                    # --- 1. FICHA TÉCNICA (Métricas Rápidas) ---
+                    st.subheader("📊 Ficha Técnica del Pique")
+                    cols_metrics = st.columns(len(managers_h2h))
                     
+                    for i, m in enumerate(managers_h2h):
+                        df_m = df_h2h[df_h2h['Mánager'] == m]
+                        media = df_m['Puntos'].mean()
+                        max_p = df_m['Puntos'].max()
+                        min_p = df_m['Puntos'].min()
+                        pct_100 = (df_m['Puntos'] >= 100).sum() / len(df_m) * 100 if len(df_m)>0 else 0
+                        
+                        with cols_metrics[i]:
+                            st.markdown(f"### 👤 {m}")
+                            st.metric("Media por jornada", f"{media:.1f} pts")
+                            st.metric("Récord máximo", f"{max_p} pts")
+                            st.metric("Peor cagada", f"{min_p} pts")
+                            st.metric("Efectividad ≥100 pts", f"{pct_100:.1f}%")
+
+                    st.markdown("---")
+
+                    # --- 2. EL DICTAMEN FINAL ---
+                    st.subheader("🏁 El Dictamen Final (Finales de Temporada)")
+                    st.caption("¿Quién quedó por encima en la clasificación global al terminar el año?")
+                    
+                    df_finales_h2h = df_h2h.loc[df_h2h.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()]
+                    df_finales_pivot = df_finales_h2h.pivot(index='Temporada', columns='Mánager', values='Puntos_Acumulados')
+                    
+                    # Rankeamos para saber quién quedó primero DE ESTE GRUPO
+                    df_finales_rank = df_finales_pivot.rank(axis=1, method='min', ascending=False)
+                    victorias_finales = (df_finales_rank == 1).sum().reset_index()
+                    victorias_finales.columns = ['Mánager', 'Ligas terminadas por encima del rival']
+                    victorias_finales = victorias_finales.sort_values(by='Ligas terminadas por encima del rival', ascending=False)
+                    
+                    col_dict1, col_dict2 = st.columns([1, 2])
+                    with col_dict1:
+                        victorias_finales.index = range(1, 1 + len(victorias_finales))
+                        st.dataframe(victorias_finales, use_container_width=True)
+                    with col_dict2:
+                        st.info(f"En las {len(temporadas_h2h_sel)} temporadas analizadas, los puntos al final de la jornada 38 (o la última jugada) determinan quién se llevó el gato al agua a nivel general.")
+
+                    st.markdown("---")
+
+                    # --- 3. MATRIZ Y QUESO ---
+                    col_mq1, col_mq2 = st.columns([1, 1])
                     df_pivot_h2h = df_h2h.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos')
                     
-                    matriz_dict = {m1: {m2: 0 for m2 in managers_h2h} for m1 in managers_h2h}
-                    
-                    for m1 in managers_h2h:
-                        for m2 in managers_h2h:
-                            if m1 != m2:
-                                # Victorias de m1 sobre m2 (estrictamente mayor)
-                                wins = (df_pivot_h2h[m1] > df_pivot_h2h[m2]).sum()
-                                # Empates
-                                ties = (df_pivot_h2h[m1] == df_pivot_h2h[m2]).sum()
-                                matriz_dict[m1][m2] = wins + ties
-                            else:
-                                matriz_dict[m1][m2] = "-" # Diagonal
+                    with col_mq1:
+                        st.subheader("🥊 Matriz de Duelos")
+                        st.caption("Lee por filas: jornadas que el mánager de la fila le sacó más puntos al de la columna *(empates suman +1 a los dos)*.")
+                        
+                        matriz_dict = {m1: {m2: 0 for m2 in managers_h2h} for m1 in managers_h2h}
+                        for m1 in managers_h2h:
+                            for m2 in managers_h2h:
+                                if m1 != m2:
+                                    wins = (df_pivot_h2h[m1] > df_pivot_h2h[m2]).sum()
+                                    ties = (df_pivot_h2h[m1] == df_pivot_h2h[m2]).sum()
+                                    matriz_dict[m1][m2] = wins + ties
+                                else:
+                                    matriz_dict[m1][m2] = "-" 
+                                    
+                        df_matriz_pelea = pd.DataFrame(matriz_dict).T
+                        st.dataframe(df_matriz_pelea, use_container_width=True)
+
+                    with col_mq2:
+                        st.subheader("🧀 Queso de la Gloria")
+                        st.caption("Jornadas en las que un mánager ha sacado la mejor puntuación del grupo **sin empatar**.")
+                        
+                        ganadores_absolutos = []
+                        for idx, row in df_pivot_h2h.iterrows():
+                            max_puntos_grupo = row.max()
+                            managers_con_max = row[row == max_puntos_grupo].index.tolist()
+                            if len(managers_con_max) == 1:
+                                ganadores_absolutos.append(managers_con_max[0])
                                 
-                    df_matriz_pelea = pd.DataFrame(matriz_dict).T
-                    st.dataframe(df_matriz_pelea, use_container_width=True)
-                    
-                    # 2. QUESO DE VICTORIAS EXCLUSIVAS (Sin empates)
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.subheader("🧀 Dominio del Grupo (El Queso de la Gloria)")
-                    st.caption(f"Jornadas en las que un mánager ha sacado **la mejor puntuación de todo el grupo seleccionado** sin empatar con nadie.")
-                    
-                    # Buscamos al campeón absoluto de cada jornada dentro del subset
-                    ganadores_absolutos = []
-                    for idx, row in df_pivot_h2h.iterrows():
-                        max_puntos_grupo = row.max()
-                        managers_con_max = row[row == max_puntos_grupo].index.tolist()
-                        
-                        # Solo hay victoria si hay UN único mánager con la puntuación máxima
-                        if len(managers_con_max) == 1:
-                            ganadores_absolutos.append(managers_con_max[0])
+                        if ganadores_absolutos:
+                            df_queso = pd.Series(ganadores_absolutos).value_counts().reset_index()
+                            df_queso.columns = ['Mánager', 'Victorias Absolutas']
                             
-                    if ganadores_absolutos:
-                        df_queso = pd.Series(ganadores_absolutos).value_counts().reset_index()
-                        df_queso.columns = ['Mánager', 'Victorias Absolutas']
+                            para_añadir = [m for m in managers_h2h if m not in df_queso['Mánager'].tolist()]
+                            if para_añadir:
+                                df_ceros = pd.DataFrame({'Mánager': para_añadir, 'Victorias Absolutas': [0]*len(para_añadir)})
+                                df_queso = pd.concat([df_queso, df_ceros], ignore_index=True)
+                                
+                            grafica_queso = alt.Chart(df_queso).mark_arc(innerRadius=60, stroke="#fff", strokeWidth=2).encode(
+                                theta=alt.Theta(field="Victorias Absolutas", type="quantitative"),
+                                color=alt.Color(field="Mánager", type="nominal", legend=alt.Legend(title=None, orient="right")),
+                                tooltip=['Mánager', 'Victorias Absolutas']
+                            ).properties(height=300)
+                            st.altair_chart(grafica_queso, use_container_width=True)
+                        else:
+                            st.info("🤷‍♂️ Nadie ha ganado una jornada en solitario.")
+
+                    # --- 4. DIFERENCIA DE SANGRE (SÓLO SI HAY EXACTAMENTE 2) ---
+                    if len(managers_h2h) == 2:
+                        st.markdown("---")
+                        st.subheader("🩸 Gráfico de Diferencia de Sangre")
+                        st.caption(f"Diferencia de puntos exacta en cada jornada entre **{managers_h2h[0]}** y **{managers_h2h[1]}**.")
                         
-                        # Asegurarnos de que salgan a 0 los que no tienen victorias
-                        para_añadir = [m for m in managers_h2h if m not in df_queso['Mánager'].tolist()]
-                        if para_añadir:
-                            df_ceros = pd.DataFrame({'Mánager': para_añadir, 'Victorias Absolutas': [0]*len(para_añadir)})
-                            df_queso = pd.concat([df_queso, df_ceros], ignore_index=True)
-                            
-                        # Gráfico circular (Quesito / Donut) con Altair
-                        grafica_queso = alt.Chart(df_queso).mark_arc(innerRadius=60, stroke="#fff", strokeWidth=2).encode(
-                            theta=alt.Theta(field="Victorias Absolutas", type="quantitative"),
-                            color=alt.Color(field="Mánager", type="nominal", legend=alt.Legend(title=None, orient="right")),
-                            tooltip=['Mánager', 'Victorias Absolutas']
+                        m1, m2 = managers_h2h[0], managers_h2h[1]
+                        df_diff = df_pivot_h2h[m1] - df_pivot_h2h[m2]
+                        df_diff = df_diff.reset_index()
+                        df_diff.columns = ['Temporada', 'Jornada', 'Diferencia']
+                        df_diff['Orden'] = range(len(df_diff)) # Para asegurar orden cronológico
+                        df_diff['Jornada_Global'] = df_diff['Temporada'] + " - J" + df_diff['Jornada'].astype(str)
+                        df_diff['Ganador'] = df_diff['Diferencia'].apply(lambda x: m1 if x > 0 else (m2 if x < 0 else 'Empate'))
+
+                        chart_diff = alt.Chart(df_diff).mark_bar().encode(
+                            x=alt.X('Jornada_Global:O', title='Jornada (Cronológica)', sort=alt.EncodingSortField(field="Orden", order="ascending")),
+                            y=alt.Y('Diferencia:Q', title=f'Diferencia (Pts)'),
+                            color=alt.Color('Ganador:N', scale=alt.Scale(
+                                domain=[m1, m2, 'Empate'], 
+                                range=['#2ca02c', '#d62728', '#7f7f7f']
+                            )),
+                            tooltip=['Temporada', 'Jornada', 'Diferencia', 'Ganador']
                         ).properties(height=350)
                         
-                        col_q1, col_q2 = st.columns([1, 2])
-                        with col_q1:
-                            df_queso.index = df_queso.index + 1
-                            df_queso.index.name = "Rank"
-                            st.dataframe(df_queso, use_container_width=True)
-                        with col_q2:
-                            st.altair_chart(grafica_queso, use_container_width=True)
-                    else:
-                        st.info("🤷‍♂️ Parece increíble, pero no ha habido ninguna victoria exclusiva sin empate en este grupo.")
+                        st.altair_chart(chart_diff, use_container_width=True)
+
+                    # --- 5. SCALEXTRIC DEL PIQUE ---
+                    st.markdown("---")
+                    st.subheader("🏎️ El Scalextric del Pique")
+                    st.caption("Evolución temporal de puntos acumulados. Selecciona una temporada para ver cómo cruzaron las líneas.")
+                    
+                    temp_scalextric = st.selectbox("Elige la temporada para ver la carrera:", temporadas_h2h_sel)
+                    df_scalextric = df_h2h[df_h2h['Temporada'] == temp_scalextric]
+                    
+                    chart_scalextric = alt.Chart(df_scalextric).mark_line(point=True, strokeWidth=3).encode(
+                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
+                        y=alt.Y('Puntos_Acumulados:Q', title='Puntos Acumulados', scale=alt.Scale(zero=False)),
+                        color=alt.Color('Mánager:N', legend=alt.Legend(title=None, orient="bottom")),
+                        tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados']
+                    ).interactive().properties(height=400)
+                    st.altair_chart(chart_scalextric, use_container_width=True)
 
     elif st.session_state.pantalla in ["👤 Perfiles (Próximamente)"]:
         c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
@@ -675,7 +743,7 @@ if df is not None:
         if c_nav4.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
             
         st.title(st.session_state.pantalla)
-        st.info("🚧 Estamos trabajando en esta sección.")
+        st.info("🚧 Estamos trabajando en esta sección. Te jodes.")
 
 else:
     st.error("❌ Faltan los archivos de datos globales.")
