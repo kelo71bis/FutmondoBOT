@@ -39,7 +39,7 @@ df, df_ligas, df_copas = cargar_datos()
 # 🛡️ HISTORIAL FIJO DE LA TEMPORADA INAUGURAL 2020/21
 clasificacion_2020_21 = ["FC Mikelona", "Arsenati", "Curyffisme FC", "URSS", "Jatafe", "Real Dendryd", "Cracklos F.C", "Bichos Team"]
 
-# 🧮 FUNCIÓN GLOBAL PARA LA MEDIA DE PUNTOS (Incluyendo la 24/25 entre 38 jornadas)
+# 🧮 FUNCIÓN GLOBAL PARA LA MEDIA DE PUNTOS
 def calcular_medias_globales(df_input):
     df_reg = df_input[df_input['Temporada'] != '2024/25']
     sum_reg = df_reg.groupby('Mánager')['Puntos'].sum()
@@ -190,24 +190,11 @@ if df is not None:
             df_clasif = df_temp[df_temp['Jornada'] == jornada_max_2425].sort_values(by="Puntos_Acumulados", ascending=False)
             
             df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados"]].copy()
-            df_mostrar['Score Histórico'] = df_mostrar['Mánager'].map(score_historico_dict)
-            df_mostrar.columns = ["Mánager", "Pts", "Score Histórico"]
-            
+            df_mostrar.columns = ["Mánager", "Pts"]
             df_mostrar.index = df_mostrar.index + 1 
             df_mostrar.index.name = "Pos."
-            df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
-            
-            col_tabla, col_info = st.columns([1, 1.8])
-            with col_tabla:
-                st.dataframe(
-                    df_mostrar, 
-                    use_container_width=True,
-                    column_config={
-                        "Score Histórico": st.column_config.NumberColumn("Score Histórico ℹ️", help="Media de puntos por jornada a lo largo de toda la historia de la liga (incluida la 24/25).")
-                    }
-                )
-            with col_info:
-                st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas no están habilitadas.")
+            st.dataframe(df_mostrar.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
+            st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas no están habilitadas.")
                 
         else:
             df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
@@ -224,20 +211,32 @@ if df is not None:
                 st.subheader(f"📊 Tabla (Jornada {jornada_seleccionada})")
                 
                 df_filtro_dinamico = df_temp[(df_temp['Jornada'] >= rango_jornadas[0]) & (df_temp['Jornada'] <= rango_jornadas[1])]
+                
                 max_punt_din = df_filtro_dinamico.groupby('Mánager')['Puntos'].max()
-                min_punt_din = df_filtro_dinamico.groupby('Mánager')['Puntos'].min()
+                
+                # Para el mínimo, filtramos las puntuaciones que son 0 (o negativas si hubiese)
+                df_dinamico_positivos = df_filtro_dinamico[df_filtro_dinamico['Puntos'] > 0]
+                min_punt_din = df_dinamico_positivos.groupby('Mánager')['Puntos'].min()
+                
                 jors_lider_acu = df_filtro_dinamico[df_filtro_dinamico['Posición'] == 1].groupby('Mánager').size()
                 jors_lider_jor = df_filtro_dinamico[df_filtro_dinamico['Posición_Jornada'] == 1].groupby('Mánager').size()
                 
                 df_clasif = df_temp[df_temp['Jornada'] == jornada_seleccionada].sort_values(by="Puntos_Acumulados", ascending=False).copy()
                 
-                df_clasif['Max. Punt.'] = df_clasif['Mánager'].map(max_punt_din)
-                df_clasif['Mín. Punt.'] = df_clasif['Mánager'].map(min_punt_din)
-                df_clasif['Líder Gral.'] = df_clasif['Mánager'].map(jors_lider_acu).fillna(0).astype(int)
-                df_clasif['Líder Jornada'] = df_clasif['Mánager'].map(jors_lider_jor).fillna(0).astype(int)
+                df_clasif['Máx'] = df_clasif['Mánager'].map(max_punt_din).round(1)
                 
-                df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Max. Punt.", "Mín. Punt.", "Líder Gral.", "Líder Jornada"]].copy()
-                df_mostrar.columns = ["Mánager", "Pts", "Máx", "Mín", "Líder(J)", "1º/J"]
+                # Mapeamos los mínimos. Si no hay puntuación > 0, devolvemos "-"
+                def get_min_formateado(manager):
+                    val = min_punt_din.get(manager)
+                    if pd.isna(val): return "-"
+                    return round(val, 1)
+                df_clasif['Mín'] = df_clasif['Mánager'].apply(get_min_formateado)
+                
+                df_clasif['Líder(J)'] = df_clasif['Mánager'].map(jors_lider_acu).fillna(0).astype(int)
+                df_clasif['1º/J'] = df_clasif['Mánager'].map(jors_lider_jor).fillna(0).astype(int)
+                
+                df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Máx", "Mín", "Líder(J)", "1º/J"]].copy()
+                df_mostrar.rename(columns={"Puntos_Acumulados": "Pts"}, inplace=True)
                 
                 df_mostrar = df_mostrar.reset_index(drop=True)
                 df_mostrar.index = df_mostrar.index + 1 
@@ -257,8 +256,6 @@ if df is not None:
                 
                 if len(managers_seleccionados) == 0:
                     managers_seleccionados = lista_managers_disponibles
-                
-                st.caption("💡 *Tip: Usa el buscador de equipos de arriba y el deslizador de jornadas para aislar trayectorias y ver el gráfico mucho más limpio.*")
                 
                 df_temp_grafica = df_temp[
                     (df_temp['Jornada'] >= rango_jornadas[0]) & 
@@ -666,10 +663,23 @@ if df is not None:
                 df_h2h = df[(df['Mánager'].isin([m1, m2])) & (df['Temporada'].isin(seasons_to_use)) & (df['Temporada'] != '2024/25')]
                 df_pivot = df_h2h.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos').dropna() if not df_h2h.empty else pd.DataFrame()
                 
+                # Para rachas históricas continuadas, necesitamos ordenar cronológicamente la matriz de forma explícita
+                df_pivot = df_pivot.sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
+                
                 total_jornadas = len(df_pivot)
                 wins_m1 = (df_pivot[m1] > df_pivot[m2]).sum() if total_jornadas > 0 else 0
                 wins_m2 = (df_pivot[m2] > df_pivot[m1]).sum() if total_jornadas > 0 else 0
                 empates = (df_pivot[m1] == df_pivot[m2]).sum() if total_jornadas > 0 else 0
+                
+                # Rachas continuadas cruzando temporadas (empate rompe racha)
+                if total_jornadas > 0:
+                    mask_m1_wins = df_pivot[m1] > df_pivot[m2]
+                    streak_m1_h2h = mask_m1_wins.groupby((~mask_m1_wins).cumsum()).sum().max()
+                    
+                    mask_m2_wins = df_pivot[m2] > df_pivot[m1]
+                    streak_m2_h2h = mask_m2_wins.groupby((~mask_m2_wins).cumsum()).sum().max()
+                else:
+                    streak_m1_h2h = streak_m2_h2h = 0
                 
                 pct_m1 = (wins_m1 / total_jornadas) * 100 if total_jornadas > 0 else 0
                 pct_m2 = (wins_m2 / total_jornadas) * 100 if total_jornadas > 0 else 0
@@ -725,9 +735,12 @@ if df is not None:
                 # --- 🗲 ESTADÍSTICAS DEL COMBATE ---
                 st.subheader("⚖️ Estadísticas del combate")
                 
-                # Función para la media dinámica
-                def calcular_media_h2h(df_combate, manager_name):
-                    df_m = df_combate[df_combate['Mánager'] == manager_name]
+                df_m1_reg = df_h2h[df_h2h['Mánager'] == m1]
+                df_m2_reg = df_h2h[df_h2h['Mánager'] == m2]
+                
+                # Función cálculo medios
+                def calcular_media_h2h(manager_name):
+                    df_m = df[(df['Mánager'] == manager_name) & (df['Temporada'].isin(seasons_to_use))]
                     df_reg = df_m[df_m['Temporada'] != '2024/25']
                     s_r = df_reg['Puntos'].sum()
                     c_r = len(df_reg)
@@ -742,16 +755,16 @@ if df is not None:
                     tot_c = c_r + c_24
                     return tot_s / tot_c if tot_c > 0 else 0
 
-                df_full_h2h_sel = df[(df['Mánager'].isin([m1, m2])) & (df['Temporada'].isin(seasons_to_use))]
-                media_m1 = calcular_media_h2h(df_full_h2h_sel, m1)
-                media_m2 = calcular_media_h2h(df_full_h2h_sel, m2)
+                media_m1 = calcular_media_h2h(m1)
+                media_m2 = calcular_media_h2h(m2)
                 
-                df_m1_reg = df_h2h[df_h2h['Mánager'] == m1]
-                df_m2_reg = df_h2h[df_h2h['Mánager'] == m2]
                 max_jor_m1 = df_m1_reg['Puntos'].max() if not df_m1_reg.empty else 0
                 max_jor_m2 = df_m2_reg['Puntos'].max() if not df_m2_reg.empty else 0
-                min_jor_m1 = df_m1_reg['Puntos'].min() if not df_m1_reg.empty else 0
-                min_jor_m2 = df_m2_reg['Puntos'].min() if not df_m2_reg.empty else 0
+                
+                valid_min_m1 = df_m1_reg[df_m1_reg['Puntos'] > 0]['Puntos']
+                valid_min_m2 = df_m2_reg[df_m2_reg['Puntos'] > 0]['Puntos']
+                min_jor_m1_str = f"{valid_min_m1.min():.1f}" if not valid_min_m1.empty else "-"
+                min_jor_m2_str = f"{valid_min_m2.min():.1f}" if not valid_min_m2.empty else "-"
                 
                 df_all_seasons = df[df['Temporada'].isin(seasons_to_use) & (df['Temporada'] != '2024/25')].copy()
                 if not df_all_seasons.empty:
@@ -806,9 +819,19 @@ if df is not None:
 <td style="font-size: 22px; font-weight: bold; padding: 12px;">{max_jor_m2:.1f}</td>
 </tr>
 <tr style="border-bottom: 1px solid #f0f2f6;">
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{min_jor_m1:.1f}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{min_jor_m1_str}</td>
 <td style="color: #7f7f7f; font-weight: 500;">Mínima Puntuación en Jornada</td>
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{min_jor_m2:.1f}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{min_jor_m2_str}</td>
+</tr>
+<tr style="border-bottom: 1px solid #f0f2f6;">
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{wins_m1}</td>
+<td style="color: #7f7f7f; font-weight: 500;">Jornadas siendo mejor</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{wins_m2}</td>
+</tr>
+<tr style="border-bottom: 1px solid #f0f2f6;">
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{int(streak_m1_h2h)}</td>
+<td style="color: #7f7f7f; font-weight: 500;">Jornadas consecutivas siendo mejor</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{int(streak_m2_h2h)}</td>
 </tr>
 <tr style="border-bottom: 1px solid #f0f2f6;">
 <td style="font-size: 22px; font-weight: bold; padding: 12px;">{veces_lider_m1}</td>
@@ -825,6 +848,7 @@ if df is not None:
                 st.markdown(html_table, unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
 
+                # --- 4. SANGRE CON EJE X VISIBLE ---
                 if total_jornadas > 0:
                     st.subheader("🩸 La Sangría: Diferencia de Puntos Directa")
                     st.caption("Eje X activo cronológicamente. Barras hacia arriba (verde) = gana el Contendiente 1. Barras hacia abajo (rojo) = gana el Contendiente 2.")
@@ -844,6 +868,7 @@ if df is not None:
                     ).properties(height=380)
                     st.altair_chart(chart_diff, use_container_width=True)
 
+                # --- 5. TABLA HISTÓRICA INMUTABLE ---
                 st.markdown("---")
                 st.subheader("📈 Histórico Temporadas")
                 st.caption("Esta tabla refleja el cierre total de puntos acumulados al final de cada liga compartida.")
