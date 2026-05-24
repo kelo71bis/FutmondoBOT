@@ -4,7 +4,7 @@ import altair as alt
 import os
 
 # ⚙️ CONFIGURACIÓN DE LA PÁGINA
-st.set_page_config(page_title="Liga Santanguissa", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="LaLiga Santanguissa", page_icon="🏆", layout="wide")
 
 # 🧠 CACHÉ DE DATOS
 @st.cache_data
@@ -68,7 +68,7 @@ if df is not None:
     # PANTALLA 0: MENÚ PRINCIPAL
     # ==========================================
     if st.session_state.pantalla == "🏠 Menú Principal":
-        st.title("🏆 Liga Santanguissa - Panel de Control")
+        st.title("🏆 LaLiga Santanguissa - Panel de Control")
         st.subheader("Bienvenido a la web oficial de estadísticas y datos históricos de LaLiga Santanguissa.")
         st.markdown("---")
         
@@ -97,7 +97,7 @@ if df is not None:
             if st.button("⚔️ Cara a Cara", use_container_width=True):
                 st.session_state.pantalla = "⚔️ Cara a Cara"
                 st.rerun()
-            st.caption("Cruza las trayectorias de dos o más mánagers y descubre quién manda en vuestros duelos.")
+            st.caption("Cruza las trayectorias de dos mánagers y descubre quién manda en vuestros duelos directos.")
 
     # ==========================================
     # PANTALLA 1: ANÁLISIS POR TEMPORADAS
@@ -119,13 +119,17 @@ if df is not None:
         
         df_temp = df[df['Temporada'] == temporada_sel].copy()
         
+        # Calcular Score Histórico global para todos los mánagers
+        score_historico_dict = df.groupby('Mánager')['Puntos'].mean().round(1).to_dict()
+        
         if temporada_sel == "2024/25":
             st.subheader("📊 Tabla Final (Temporada 2024/25)")
             jornada_max_2425 = df_temp['Jornada'].max()
             df_clasif = df_temp[df_temp['Jornada'] == jornada_max_2425].sort_values(by="Puntos_Acumulados", ascending=False)
             
-            df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
-            df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
+            df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados"]].copy()
+            df_mostrar['Score Histórico'] = df_mostrar['Mánager'].map(score_historico_dict)
+            df_mostrar.columns = ["Mánager", "Puntos Temporada", "Score Histórico"]
             
             df_mostrar.index = df_mostrar.index + 1 
             df_mostrar.index.name = "Pos."
@@ -133,7 +137,16 @@ if df is not None:
             
             col_tabla, col_info = st.columns([1, 1.8])
             with col_tabla:
-                st.dataframe(df_mostrar, use_container_width=True)
+                st.dataframe(
+                    df_mostrar, 
+                    use_container_width=True,
+                    column_config={
+                        "Score Histórico": st.column_config.NumberColumn(
+                            "Score Histórico ℹ️",
+                            help="Media de puntos por jornada a lo largo de toda la historia de la liga."
+                        )
+                    }
+                )
             with col_info:
                 st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas de evolución temporal por jornada no están habilitadas.")
                 
@@ -151,14 +164,25 @@ if df is not None:
                 
                 st.subheader(f"📊 Tabla (Jornada {jornada_seleccionada})")
                 df_clasif = df_temp[df_temp['Jornada'] == jornada_seleccionada].sort_values(by="Puntos_Acumulados", ascending=False)
-                df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Acumulado_Total"]].reset_index(drop=True)
-                df_mostrar.columns = ["Mánager", "Puntos Temporada", "Puntos Históricos"]
+                
+                df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados"]].copy()
+                df_mostrar['Score Histórico'] = df_mostrar['Mánager'].map(score_historico_dict)
+                df_mostrar.columns = ["Mánager", "Puntos Temporada", "Score Histórico"]
                 
                 df_mostrar.index = df_mostrar.index + 1 
                 df_mostrar.index.name = "Pos."
                 df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
                 
-                st.dataframe(df_mostrar, use_container_width=True)
+                st.dataframe(
+                    df_mostrar, 
+                    use_container_width=True,
+                    column_config={
+                        "Score Histórico": st.column_config.NumberColumn(
+                            "Score Histórico ℹ️",
+                            help="Media de puntos por jornada a lo largo de toda la historia de la liga."
+                        )
+                    }
+                )
                 
             with col2:
                 lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
@@ -188,7 +212,9 @@ if df is not None:
                     # --- BLOQUE 1: ANÁLISIS ACUMULADO ---
                     st.markdown("---")
                     st.subheader("📊 Análisis Acumulado (Clasificación General)")
-                    tab_pos_acu, tab_pts_acu, tab_mat_acu = st.tabs(["🎢 Posición", "📈 Puntos", "🔢 Matriz"])
+                    tab_pos_acu, tab_mat_pos_acu, tab_pts_acu, tab_mat_pts_acu = st.tabs([
+                        "🎢 Posición", "🔢 Matriz Pos.", "📈 Puntos", "🔢 Matriz Pts."
+                    ])
                     
                     with tab_pos_acu:
                         grafica_posiciones = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
@@ -201,6 +227,10 @@ if df is not None:
                             tooltip=['Mánager', 'Jornada', 'Posición', 'Puntos_Acumulados']
                         ).properties(height=420)
                         st.altair_chart(grafica_posiciones, use_container_width=True)
+
+                    with tab_mat_pos_acu:
+                        df_matriz_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición')
+                        st.dataframe(df_matriz_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
 
                     with tab_pts_acu:
                         min_pts_acu = int(df_temp_grafica['Puntos_Acumulados'].min())
@@ -217,14 +247,16 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_acu.interactive(), use_container_width=True)
 
-                    with tab_mat_acu:
-                        df_matriz_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición')
-                        st.dataframe(df_matriz_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
+                    with tab_mat_pts_acu:
+                        df_matriz_pts_acum = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Puntos_Acumulados')
+                        st.dataframe(df_matriz_pts_acum.style.format(precision=0, na_rep="-"), use_container_width=True)
 
                     # --- BLOQUE 2: ANÁLISIS DE LA JORNADA ---
                     st.markdown("---")
                     st.subheader("⚡ Análisis de la Jornada Aislada")
-                    tab_pos_jor, tab_pts_jor, tab_mat_jor = st.tabs(["🎯 Posición", "⚡ Puntos", "🔢 Matriz"])
+                    tab_pos_jor, tab_mat_pos_jor, tab_pts_jor, tab_mat_pts_jor = st.tabs([
+                        "🎯 Posición", "🔢 Matriz Pos.", "⚡ Puntos", "🔢 Matriz Pts."
+                    ])
                     
                     with tab_pos_jor:
                         grafica_pos_jornada = alt.Chart(df_temp_grafica).mark_line(point=True, strokeWidth=3).encode(
@@ -237,6 +269,10 @@ if df is not None:
                             tooltip=['Mánager', 'Jornada', 'Puntos', 'Posición_Jornada']
                         ).properties(height=420)
                         st.altair_chart(grafica_pos_jornada, use_container_width=True)
+
+                    with tab_mat_pos_jor:
+                        df_matriz_jor = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición_Jornada')
+                        st.dataframe(df_matriz_jor.style.format(precision=0, na_rep="-"), use_container_width=True)
 
                     with tab_pts_jor:
                         min_pts_jor = int(df_temp_grafica['Puntos'].min())
@@ -253,9 +289,10 @@ if df is not None:
                         ).properties(height=420)
                         st.altair_chart(grafica_puntos_jor, use_container_width=True)
 
-                    with tab_mat_jor:
-                        df_matriz_jor = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Posición_Jornada')
-                        st.dataframe(df_matriz_jor.style.format(precision=0, na_rep="-"), use_container_width=True)
+                    with tab_mat_pts_jor:
+                        df_matriz_pts_jor = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Puntos')
+                        st.dataframe(df_matriz_pts_jor.style.format(precision=0, na_rep="-"), use_container_width=True)
+
                 else:
                     st.warning("⚠️ Selecciona al menos un mánager en el filtro para pintar los análisis.")
 
@@ -357,7 +394,7 @@ if df is not None:
         st.markdown("---")
 
         # --- BLOQUE 3: RACHAS HISTÓRICAS ---
-        st.header("🔥 Rachas Históricas")
+        st.header("🔥 Mayores Rachas Históricas")
         df_rachas = df_records.copy()
         
         df_rachas['Pos_Acum'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=False)
@@ -410,29 +447,29 @@ if df is not None:
         top10_rachas_peor_jor = rachas_peor_jor.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']]
         top10_rachas_peor_jor.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada']
 
-        st.subheader("El Trono y El Pozo de la Clasificación General")
+        st.subheader("Jornadas seguidas en la cumbre o en el pozo")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
-            st.caption("👑 **Líderes de Hierro** (Semanas consecutivas siendo 1º)")
+            st.caption("👑 **Líderes de Hierro** (Semanas consecutivas siendo 1º general)")
             top10_rachas_lider.index = range(1, 1 + len(top10_rachas_lider))
             top10_rachas_lider.index.name = "Rank"
             st.dataframe(top10_rachas_lider.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
         with col_r2:
-            st.caption("⚓ **Fango Eterno** (Semanas consecutivas siendo último)")
+            st.caption("⚓ **Fango Eterno** (Semanas consecutivas siendo último general)")
             top10_rachas_ultimo.index = range(1, 1 + len(top10_rachas_ultimo))
             top10_rachas_ultimo.index.name = "Rank"
             st.dataframe(top10_rachas_ultimo.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("Héroes y Villanos del Fin de Semana")
+        st.subheader("Jornadas consecutivas dando la nota (para bien y para mal)")
         col_r3, col_r4 = st.columns(2)
         with col_r3:
-            st.caption("🌟 **MVP en Serie** (Jornadas seguidas haciendo la mejor puntuación)")
+            st.caption("⬆️ **Jornadas consecutivas On Fire** (Jornadas seguidas con la mejor puntuación)")
             top10_rachas_mvp.index = range(1, 1 + len(top10_rachas_mvp))
             top10_rachas_mvp.index.name = "Rank"
             st.dataframe(top10_rachas_mvp.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
         with col_r4:
-            st.caption("🤦‍♂️ **Ruina Consecutiva** (Jornadas seguidas haciendo la peor puntuación)")
+            st.caption("💩 **Jornadas consecutivas dando pena** (Jornadas seguidas con la peor puntuación)")
             top10_rachas_peor_jor.index = range(1, 1 + len(top10_rachas_peor_jor))
             top10_rachas_peor_jor.index.name = "Rank"
             st.dataframe(top10_rachas_peor_jor.reset_index().set_index(['Rank', 'Mánager']), use_container_width=True)
@@ -443,7 +480,7 @@ if df is not None:
         col_m1, col_m2 = st.columns([1.5, 1])
         
         with col_m1:
-            st.subheader("🏅 Medallero de Jornadas (y retratadas)")
+            st.subheader("🏅 El Medallero Olímpico")
             st.caption(f"Filtro aplicado: **{texto_filtro}**")
             
             if not df_records.empty:
@@ -505,6 +542,17 @@ if df is not None:
                 if 'Subcampeón' in df_ligas_vista.columns: cols.append('Subcampeón')
                 df_ligas_vista = df_ligas_vista[cols]
                 st.dataframe(df_ligas_vista, use_container_width=True, hide_index=True)
+                
+                # Tabla Resumen Ligas
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.caption("Resumen Histórico de Liga")
+                resumen_liga = df_ligas.groupby(['Mánager', 'Posicion']).size().unstack(fill_value=0)
+                if 'Campeón' not in resumen_liga: resumen_liga['Campeón'] = 0
+                if 'Subcampeón' not in resumen_liga: resumen_liga['Subcampeón'] = 0
+                resumen_liga = resumen_liga[['Campeón', 'Subcampeón']]
+                resumen_liga = resumen_liga[(resumen_liga['Campeón'] > 0) | (resumen_liga['Subcampeón'] > 0)]
+                resumen_liga = resumen_liga.sort_values(by=['Campeón', 'Subcampeón'], ascending=[False, False])
+                st.dataframe(resumen_liga, use_container_width=True)
             else:
                 st.warning("⚠️ No se ha generado el palmarés de liga.")
 
@@ -520,11 +568,22 @@ if df is not None:
                 
                 df_copas_vista = df_copas_vista[cols]
                 st.dataframe(df_copas_vista, use_container_width=True, hide_index=True)
+                
+                # Tabla Resumen Copas
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.caption("Resumen Histórico de Copas")
+                resumen_copa = df_copas.groupby(['Mánager', 'Posicion']).size().unstack(fill_value=0)
+                if 'Campeón' not in resumen_copa: resumen_copa['Campeón'] = 0
+                if 'Finalista' not in resumen_copa: resumen_copa['Finalista'] = 0
+                resumen_copa = resumen_copa[['Campeón', 'Finalista']]
+                resumen_copa = resumen_copa[(resumen_copa['Campeón'] > 0) | (resumen_copa['Finalista'] > 0)]
+                resumen_copa = resumen_copa.sort_values(by=['Campeón', 'Finalista'], ascending=[False, False])
+                st.dataframe(resumen_copa, use_container_width=True)
             else:
                 st.warning("⚠️ No se ha encontrado el palmarés de copas.")
                 
         st.markdown("---")
-        st.subheader("👑 Reyes de la Liga (Recuento de Títulos)")
+        st.subheader("👑 Reyes de la Liga (Recuento de Títulos Absoluto)")
         
         campeones = []
         if df_ligas is not None:
@@ -553,7 +612,7 @@ if df is not None:
             st.dataframe(tabla_titulos[['Ligas', 'Copas', 'Total Títulos']], use_container_width=True)
 
     # ==========================================
-    # PANTALLA 4: CARA A CARA
+    # PANTALLA 4: CARA A CARA (¡EL COLISEO 1vs1!)
     # ==========================================
     elif st.session_state.pantalla == "⚔️ Cara a Cara":
         c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
@@ -562,178 +621,194 @@ if df is not None:
         if c_nav3.button("🏆 Salón Fama", use_container_width=True): st.session_state.pantalla = "🏆 Salón de la Fama"; st.rerun()
         if c_nav4.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
             
-        st.title("⚔️ Cara a Cara (Head-to-Head)")
+        st.title("⚔️ Cara a Cara (El Coliseo 1vs1)")
         st.markdown("---")
         
         lista_todos_managers = sorted(df['Mánager'].unique().tolist())
-        st.write("Elige a los contendientes para destripar su historial y ver quién es el padre de quién:")
         
-        col_f1, col_f2 = st.columns([1, 1])
+        # FILTROS DE CONTENDIENTES (Bloqueos inteligentes)
+        col_f1, col_f2, col_f3 = st.columns([1, 1, 1])
         with col_f1:
-            managers_h2h = st.multiselect(
-                "👥 Selecciona Mánagers (mínimo 2):", 
-                lista_todos_managers, 
-                default=[]
-            )
+            m1 = st.selectbox("🔴 Contendiente 1:", ["-- Selecciona un Mánager --"] + lista_todos_managers)
             
-        if len(managers_h2h) < 2:
-            st.warning("⚠️ **¡No seas cobarde!** Selecciona al menos a dos mánagers para meterlos en la jaula de barro y ver el historial.")
+        valid_m2 = []
+        if m1 != "-- Selecciona un Mánager --":
+            seasons_m1 = set(df[(df['Mánager'] == m1) & (df['Temporada'] != '2024/25')]['Temporada'].unique())
+            for m in lista_todos_managers:
+                if m != m1:
+                    seasons_m = set(df[(df['Mánager'] == m) & (df['Temporada'] != '2024/25')]['Temporada'].unique())
+                    if len(seasons_m1.intersection(seasons_m)) > 0:
+                        valid_m2.append(m)
+        
+        with col_f2:
+            opciones_m2 = ["-- Esperando rival --"] if m1 == "-- Selecciona un Mánager --" else ["-- Selecciona un Mánager --"] + valid_m2
+            m2 = st.selectbox("🔵 Contendiente 2:", opciones_m2)
+            
+        if m1 == "-- Selecciona un Mánager --" or m2 == "-- Selecciona un Mánager --" or m2 == "-- Esperando rival --":
+            st.info("👆 Selecciona a dos mánagers para enfrentarlos en el Cara a Cara. El segundo selector solo mostrará a mánagers con los que el primero haya coincidido.")
         else:
-            # Filtro de coincidencias temporales
-            df_h2h_base = df[df['Mánager'].isin(managers_h2h) & (df['Temporada'] != '2024/25')]
-            temporadas_por_manager = df_h2h_base.groupby('Temporada')['Mánager'].nunique()
-            temporadas_comunes = temporadas_por_manager[temporadas_por_manager == len(managers_h2h)].index.tolist()
-            temporadas_comunes = sorted(temporadas_comunes, reverse=True)
+            # FILTRO TEMPORADAS
+            seasons_m1 = set(df[(df['Mánager'] == m1) & (df['Temporada'] != '2024/25')]['Temporada'].unique())
+            seasons_m2 = set(df[(df['Mánager'] == m2) & (df['Temporada'] != '2024/25')]['Temporada'].unique())
+            temporadas_comunes = sorted(list(seasons_m1.intersection(seasons_m2)), reverse=True)
             
-            if not temporadas_comunes:
-                st.error("❌ Estos mánagers nunca han coincidido en la misma temporada (o no hay datos).")
+            with col_f3:
+                temporadas_h2h_sel = st.multiselect(
+                    "📅 Temporadas del duelo:", 
+                    temporadas_comunes, 
+                    default=temporadas_comunes
+                )
+            
+            if len(temporadas_h2h_sel) == 0:
+                st.warning("⚠️ Selecciona al menos una temporada para iniciar el combate.")
             else:
-                with col_f2:
-                    temporadas_h2h_sel = st.multiselect(
-                        "📅 Temporadas de coincidencia (filtra si quieres):", 
-                        temporadas_comunes, 
-                        default=temporadas_comunes
-                    )
+                st.markdown("---")
                 
-                if len(temporadas_h2h_sel) == 0:
-                    st.warning("Selecciona al menos una temporada.")
-                else:
-                    st.markdown("---")
-                    df_h2h = df_h2h_base[df_h2h_base['Temporada'].isin(temporadas_h2h_sel)]
-                    
-                    # --- 1. FICHA TÉCNICA (Métricas Rápidas) ---
-                    st.subheader("📊 Ficha Técnica del Pique")
-                    cols_metrics = st.columns(len(managers_h2h))
-                    
-                    for i, m in enumerate(managers_h2h):
-                        df_m = df_h2h[df_h2h['Mánager'] == m]
-                        media = df_m['Puntos'].mean()
-                        max_p = df_m['Puntos'].max()
-                        min_p = df_m['Puntos'].min()
-                        pct_100 = (df_m['Puntos'] >= 100).sum() / len(df_m) * 100 if len(df_m)>0 else 0
-                        
-                        with cols_metrics[i]:
-                            st.markdown(f"### 👤 {m}")
-                            st.metric("Media por jornada", f"{media:.1f} pts")
-                            st.metric("Récord máximo", f"{max_p} pts")
-                            st.metric("Peor cagada", f"{min_p} pts")
-                            st.metric("Efectividad ≥100 pts", f"{pct_100:.1f}%")
+                # DATOS FILTRADOS
+                df_h2h = df[(df['Mánager'].isin([m1, m2])) & (df['Temporada'].isin(temporadas_h2h_sel))]
+                df_pivot = df_h2h.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos').dropna()
+                
+                total_jornadas = len(df_pivot)
+                total_temporadas = len(temporadas_h2h_sel)
+                
+                wins_m1 = (df_pivot[m1] > df_pivot[m2]).sum()
+                wins_m2 = (df_pivot[m2] > df_pivot[m1]).sum()
+                empates = (df_pivot[m1] == df_pivot[m2]).sum()
+                
+                pct_m1 = (wins_m1 / total_jornadas) * 100 if total_jornadas > 0 else 0
+                pct_m2 = (wins_m2 / total_jornadas) * 100 if total_jornadas > 0 else 0
+                
+                # TEXTO INTRODUCTORIO
+                st.markdown(f"**{m1}** y **{m2}** han coincidido en un total de **{total_jornadas} jornadas** a lo largo de **{total_temporadas} temporadas** en los registros analizados.")
+                st.markdown(f"**{m1}** ha quedado por encima de **{m2}** en **{wins_m1} jornadas** ({pct_m1:.1f}%), mientras que **{m2}** ha hecho lo contrario en **{wins_m2} jornadas** ({pct_m2:.1f}%). (Empataron en {empates} ocasiones).")
+                st.write("Este es el resultado del cara a cara global (Ligas terminadas uno por encima del otro):")
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # --- EL MARCADOR GIGANTE ---
+                df_finales = df_h2h.loc[df_h2h.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()]
+                df_fin_pivot = df_finales.pivot(index='Temporada', columns='Mánager', values='Puntos_Acumulados').dropna()
+                ligas_m1 = (df_fin_pivot[m1] > df_fin_pivot[m2]).sum()
+                ligas_m2 = (df_fin_pivot[m2] > df_fin_pivot[m1]).sum()
+                
+                # Trofeos Históricos Absolutos de cada uno
+                ligas_tot_m1 = len(df_ligas[(df_ligas['Mánager']==m1) & (df_ligas['Posicion']=='Campeón')]) if df_ligas is not None else 0
+                copas_tot_m1 = len(df_copas[(df_copas['Mánager']==m1) & (df_copas['Posicion']=='Campeón')]) if df_copas is not None else 0
+                trofeos_m1 = ("⭐" * ligas_tot_m1) + ("🏆" * copas_tot_m1) if (ligas_tot_m1 + copas_tot_m1) > 0 else "Sin títulos"
 
-                    st.markdown("---")
+                ligas_tot_m2 = len(df_ligas[(df_ligas['Mánager']==m2) & (df_ligas['Posicion']=='Campeón')]) if df_ligas is not None else 0
+                copas_tot_m2 = len(df_copas[(df_copas['Mánager']==m2) & (df_copas['Posicion']=='Campeón')]) if df_copas is not None else 0
+                trofeos_m2 = ("⭐" * ligas_tot_m2) + ("🏆" * copas_tot_m2) if (ligas_tot_m2 + copas_tot_m2) > 0 else "Sin títulos"
 
-                    # --- 2. EL DICTAMEN FINAL ---
-                    st.subheader("🏁 El Dictamen Final (Finales de Temporada)")
-                    st.caption("¿Quién quedó por encima en la clasificación global al terminar el año?")
+                col_mar1, col_mar2, col_mar3 = st.columns([1, 1, 1])
+                with col_mar1:
+                    st.markdown(f"<h2 style='text-align: center; color: #2ca02c;'>{m1}</h2>", unsafe_allow_html=True)
+                    st.markdown(f"<h5 style='text-align: center; letter-spacing: 2px;'>{trofeos_m1}</h5>", unsafe_allow_html=True)
+                with col_mar2:
+                    st.markdown(f"<h1 style='text-align: center; font-size: 70px; margin-top: -20px;'>{ligas_m1} - {ligas_m2}</h1>", unsafe_allow_html=True)
+                with col_mar3:
+                    st.markdown(f"<h2 style='text-align: center; color: #d62728;'>{m2}</h2>", unsafe_allow_html=True)
+                    st.markdown(f"<h5 style='text-align: center; letter-spacing: 2px;'>{trofeos_m2}</h5>", unsafe_allow_html=True)
+
+                st.markdown("<br><hr>", unsafe_allow_html=True)
+
+                # --- MÉTRICAS DE COMPARACIÓN ---
+                st.subheader("⚖️ Comparativa de Métricas")
+                
+                # M1 Métricas
+                df_m1 = df_h2h[df_h2h['Mánager']==m1]
+                media_jor_m1 = df_m1['Puntos'].mean()
+                max_jor_m1 = df_m1['Puntos'].max()
+                min_jor_m1 = df_m1['Puntos'].min()
+                
+                df_all_h2h_seasons = df[df['Temporada'].isin(temporadas_h2h_sel)]
+                df_all_h2h_seasons['Rank_Jor'] = df_all_h2h_seasons.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
+                veces_lider_m1 = len(df_all_h2h_seasons[(df_all_h2h_seasons['Mánager']==m1) & (df_all_h2h_seasons['Rank_Jor']==1)])
+                
+                df_lideres = df_all_h2h_seasons[df_all_h2h_seasons['Rank_Jor']==1].sort_values(['Mánager', 'Temporada', 'Jornada'])
+                df_lideres['Grupo_Racha'] = (df_lideres['Jornada'] != df_lideres['Jornada'].shift() + 1).cumsum()
+                rachas_m1 = df_lideres[df_lideres['Mánager']==m1].groupby(['Temporada', 'Grupo_Racha']).size()
+                max_racha_m1 = rachas_m1.max() if not rachas_m1.empty else 0
+
+                # M2 Métricas
+                df_m2 = df_h2h[df_h2h['Mánager']==m2]
+                media_jor_m2 = df_m2['Puntos'].mean()
+                max_jor_m2 = df_m2['Puntos'].max()
+                min_jor_m2 = df_m2['Puntos'].min()
+                
+                veces_lider_m2 = len(df_all_h2h_seasons[(df_all_h2h_seasons['Mánager']==m2) & (df_all_h2h_seasons['Rank_Jor']==1)])
+                
+                rachas_m2 = df_lideres[df_lideres['Mánager']==m2].groupby(['Temporada', 'Grupo_Racha']).size()
+                max_racha_m2 = rachas_m2.max() if not rachas_m2.empty else 0
+
+                # Renderizar tabla manual de métricas para que quede visual
+                col_met1, col_met2, col_met3 = st.columns([1, 1.5, 1])
+                
+                with col_met2: st.markdown("<p style='text-align: center; color: gray;'><b>Media Puntos por Jornada</b></p>", unsafe_allow_html=True)
+                with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{media_jor_m1:.1f}</b></p>", unsafe_allow_html=True)
+                with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{media_jor_m2:.1f}</b></p>", unsafe_allow_html=True)
+
+                if total_temporadas > 1:
+                    media_jor_temp_m1 = df_m1.groupby('Temporada')['Puntos'].mean().mean()
+                    media_jor_temp_m2 = df_m2.groupby('Temporada')['Puntos'].mean().mean()
                     
-                    df_finales_h2h = df_h2h.loc[df_h2h.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()]
-                    df_finales_pivot = df_finales_h2h.pivot(index='Temporada', columns='Mánager', values='Puntos_Acumulados')
+                    media_temp_m1 = df_finales[df_finales['Mánager']==m1]['Puntos_Acumulados'].mean()
+                    media_temp_m2 = df_finales[df_finales['Mánager']==m2]['Puntos_Acumulados'].mean()
                     
-                    # Rankeamos para saber quién quedó primero DE ESTE GRUPO
-                    df_finales_rank = df_finales_pivot.rank(axis=1, method='min', ascending=False)
-                    victorias_finales = (df_finales_rank == 1).sum().reset_index()
-                    victorias_finales.columns = ['Mánager', 'Ligas terminadas por encima del rival']
-                    victorias_finales = victorias_finales.sort_values(by='Ligas terminadas por encima del rival', ascending=False)
+                    with col_met2: st.markdown("<p style='text-align: center; color: gray;' title='Media de las medias por jornada de cada temporada analizada'><b>Media Puntos por Jornada y Temporada ℹ️</b></p>", unsafe_allow_html=True)
+                    with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{media_jor_temp_m1:.1f}</b></p>", unsafe_allow_html=True)
+                    with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{media_jor_temp_m2:.1f}</b></p>", unsafe_allow_html=True)
                     
-                    col_dict1, col_dict2 = st.columns([1, 2])
-                    with col_dict1:
-                        victorias_finales.index = range(1, 1 + len(victorias_finales))
-                        st.dataframe(victorias_finales, use_container_width=True)
-                    with col_dict2:
-                        st.info(f"En las {len(temporadas_h2h_sel)} temporadas analizadas, los puntos al final de la jornada 38 (o la última jugada) determinan quién se llevó el gato al agua a nivel general.")
-
-                    st.markdown("---")
-
-                    # --- 3. MATRIZ Y QUESO ---
-                    col_mq1, col_mq2 = st.columns([1, 1])
-                    df_pivot_h2h = df_h2h.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos')
+                    with col_met2: st.markdown("<p style='text-align: center; color: gray;' title='Media de la puntuación final acumulada de cada temporada'><b>Media Puntos por Temporada ℹ️</b></p>", unsafe_allow_html=True)
+                    with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{media_temp_m1:.0f}</b></p>", unsafe_allow_html=True)
+                    with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{media_temp_m2:.0f}</b></p>", unsafe_allow_html=True)
                     
-                    with col_mq1:
-                        st.subheader("🥊 Matriz de Duelos")
-                        st.caption("Lee por filas: jornadas que el mánager de la fila le sacó más puntos al de la columna *(empates suman +1 a los dos)*.")
-                        
-                        matriz_dict = {m1: {m2: 0 for m2 in managers_h2h} for m1 in managers_h2h}
-                        for m1 in managers_h2h:
-                            for m2 in managers_h2h:
-                                if m1 != m2:
-                                    wins = (df_pivot_h2h[m1] > df_pivot_h2h[m2]).sum()
-                                    ties = (df_pivot_h2h[m1] == df_pivot_h2h[m2]).sum()
-                                    matriz_dict[m1][m2] = wins + ties
-                                else:
-                                    matriz_dict[m1][m2] = "-" 
-                                    
-                        df_matriz_pelea = pd.DataFrame(matriz_dict).T
-                        st.dataframe(df_matriz_pelea, use_container_width=True)
-
-                    with col_mq2:
-                        st.subheader("🧀 Queso de la Gloria")
-                        st.caption("Jornadas en las que un mánager ha sacado la mejor puntuación del grupo **sin empatar**.")
-                        
-                        ganadores_absolutos = []
-                        for idx, row in df_pivot_h2h.iterrows():
-                            max_puntos_grupo = row.max()
-                            managers_con_max = row[row == max_puntos_grupo].index.tolist()
-                            if len(managers_con_max) == 1:
-                                ganadores_absolutos.append(managers_con_max[0])
-                                
-                        if ganadores_absolutos:
-                            df_queso = pd.Series(ganadores_absolutos).value_counts().reset_index()
-                            df_queso.columns = ['Mánager', 'Victorias Absolutas']
-                            
-                            para_añadir = [m for m in managers_h2h if m not in df_queso['Mánager'].tolist()]
-                            if para_añadir:
-                                df_ceros = pd.DataFrame({'Mánager': para_añadir, 'Victorias Absolutas': [0]*len(para_añadir)})
-                                df_queso = pd.concat([df_queso, df_ceros], ignore_index=True)
-                                
-                            grafica_queso = alt.Chart(df_queso).mark_arc(innerRadius=60, stroke="#fff", strokeWidth=2).encode(
-                                theta=alt.Theta(field="Victorias Absolutas", type="quantitative"),
-                                color=alt.Color(field="Mánager", type="nominal", legend=alt.Legend(title=None, orient="right")),
-                                tooltip=['Mánager', 'Victorias Absolutas']
-                            ).properties(height=300)
-                            st.altair_chart(grafica_queso, use_container_width=True)
-                        else:
-                            st.info("🤷‍♂️ Nadie ha ganado una jornada en solitario.")
-
-                    # --- 4. DIFERENCIA DE SANGRE (SÓLO SI HAY EXACTAMENTE 2) ---
-                    if len(managers_h2h) == 2:
-                        st.markdown("---")
-                        st.subheader("🩸 Gráfico de Diferencia de Sangre")
-                        st.caption(f"Diferencia de puntos exacta en cada jornada entre **{managers_h2h[0]}** y **{managers_h2h[1]}**.")
-                        
-                        m1, m2 = managers_h2h[0], managers_h2h[1]
-                        df_diff = df_pivot_h2h[m1] - df_pivot_h2h[m2]
-                        df_diff = df_diff.reset_index()
-                        df_diff.columns = ['Temporada', 'Jornada', 'Diferencia']
-                        df_diff['Orden'] = range(len(df_diff)) # Para asegurar orden cronológico
-                        df_diff['Jornada_Global'] = df_diff['Temporada'] + " - J" + df_diff['Jornada'].astype(str)
-                        df_diff['Ganador'] = df_diff['Diferencia'].apply(lambda x: m1 if x > 0 else (m2 if x < 0 else 'Empate'))
-
-                        chart_diff = alt.Chart(df_diff).mark_bar().encode(
-                            x=alt.X('Jornada_Global:O', title='Jornada (Cronológica)', sort=alt.EncodingSortField(field="Orden", order="ascending")),
-                            y=alt.Y('Diferencia:Q', title=f'Diferencia (Pts)'),
-                            color=alt.Color('Ganador:N', scale=alt.Scale(
-                                domain=[m1, m2, 'Empate'], 
-                                range=['#2ca02c', '#d62728', '#7f7f7f']
-                            )),
-                            tooltip=['Temporada', 'Jornada', 'Diferencia', 'Ganador']
-                        ).properties(height=350)
-                        
-                        st.altair_chart(chart_diff, use_container_width=True)
-
-                    # --- 5. SCALEXTRIC DEL PIQUE ---
-                    st.markdown("---")
-                    st.subheader("🏎️ El Scalextric del Pique")
-                    st.caption("Evolución temporal de puntos acumulados. Selecciona una temporada para ver cómo cruzaron las líneas.")
+                    max_temp_m1 = df_finales[df_finales['Mánager']==m1]['Puntos_Acumulados'].max()
+                    max_temp_m2 = df_finales[df_finales['Mánager']==m2]['Puntos_Acumulados'].max()
                     
-                    temp_scalextric = st.selectbox("Elige la temporada para ver la carrera:", temporadas_h2h_sel)
-                    df_scalextric = df_h2h[df_h2h['Temporada'] == temp_scalextric]
-                    
-                    chart_scalextric = alt.Chart(df_scalextric).mark_line(point=True, strokeWidth=3).encode(
-                        x=alt.X('Jornada:O', title='Jornada', axis=alt.Axis(labelAngle=0)),
-                        y=alt.Y('Puntos_Acumulados:Q', title='Puntos Acumulados', scale=alt.Scale(zero=False)),
-                        color=alt.Color('Mánager:N', legend=alt.Legend(title=None, orient="bottom")),
-                        tooltip=['Mánager', 'Jornada', 'Puntos_Acumulados']
-                    ).interactive().properties(height=400)
-                    st.altair_chart(chart_scalextric, use_container_width=True)
+                    with col_met2: st.markdown("<p style='text-align: center; color: gray;'><b>Máxima Puntuación de Temporada</b></p>", unsafe_allow_html=True)
+                    with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{max_temp_m1:.0f}</b></p>", unsafe_allow_html=True)
+                    with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{max_temp_m2:.0f}</b></p>", unsafe_allow_html=True)
+
+                with col_met2: st.markdown("<p style='text-align: center; color: gray;'><b>Máxima Puntuación en Jornada</b></p>", unsafe_allow_html=True)
+                with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{max_jor_m1}</b></p>", unsafe_allow_html=True)
+                with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{max_jor_m2}</b></p>", unsafe_allow_html=True)
+                
+                with col_met2: st.markdown("<p style='text-align: center; color: gray;'><b>Mínima Puntuación en Jornada</b></p>", unsafe_allow_html=True)
+                with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{min_jor_m1}</b></p>", unsafe_allow_html=True)
+                with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{min_jor_m2}</b></p>", unsafe_allow_html=True)
+
+                with col_met2: st.markdown("<p style='text-align: center; color: gray;'><b>Veces Líder de la Jornada</b></p>", unsafe_allow_html=True)
+                with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{veces_lider_m1}</b></p>", unsafe_allow_html=True)
+                with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{veces_lider_m2}</b></p>", unsafe_allow_html=True)
+
+                with col_met2: st.markdown("<p style='text-align: center; color: gray;'><b>Mejor Racha On Fire (Jornadas líder consecutivas)</b></p>", unsafe_allow_html=True)
+                with col_met1: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{max_racha_m1}</b></p>", unsafe_allow_html=True)
+                with col_met3: st.markdown(f"<p style='text-align: center; font-size: 20px;'><b>{max_racha_m2}</b></p>", unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # --- 4. DIFERENCIA DE SANGRE ---
+                st.subheader("🩸 La Sangría: Diferencia de Puntos Directa")
+                st.caption(f"Diferencia exacta en cada jornada jugada. Barras verdes = gana **{m1}**. Barras rojas = gana **{m2}**.")
+                
+                df_diff = df_pivot[m1] - df_pivot[m2]
+                df_diff = df_diff.reset_index()
+                df_diff.columns = ['Temporada', 'Jornada', 'Diferencia']
+                df_diff['Orden'] = range(len(df_diff))
+                df_diff['Jornada_Global'] = df_diff['Temporada'] + " - J" + df_diff['Jornada'].astype(str)
+                df_diff['Ganador'] = df_diff['Diferencia'].apply(lambda x: m1 if x > 0 else (m2 if x < 0 else 'Empate'))
+
+                chart_diff = alt.Chart(df_diff).mark_bar().encode(
+                    x=alt.X('Jornada_Global:O', title='Jornada (Cronológica)', sort=alt.EncodingSortField(field="Orden", order="ascending"), axis=alt.Axis(labels=False, ticks=False)),
+                    y=alt.Y('Diferencia:Q', title='Diferencia (Pts)'),
+                    color=alt.Color('Ganador:N', scale=alt.Scale(
+                        domain=[m1, m2, 'Empate'], 
+                        range=['#2ca02c', '#d62728', '#7f7f7f']
+                    ), legend=alt.Legend(title="Ganador de Jornada", orient="bottom")),
+                    tooltip=['Temporada', 'Jornada', 'Diferencia', 'Ganador']
+                ).properties(height=350)
+                
+                st.altair_chart(chart_diff, use_container_width=True)
 
     elif st.session_state.pantalla in ["👤 Perfiles (Próximamente)"]:
         c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
