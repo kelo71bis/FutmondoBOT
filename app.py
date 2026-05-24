@@ -37,7 +37,7 @@ def cargar_datos():
 df, df_ligas, df_copas = cargar_datos()
 
 # 🛡️ HISTORIAL FIJO DE LA TEMPORADA INAUGURAL 2020/21
-clasificacion_2020_21 = ["FC Mikelona", "Arsenati", "Curyffisme FC", "URSS", "Jatafe", "Real Dendryd", "Cracklos F.C", "Bichos Team"]
+clasificacion_2020_21 = ["FC Mikelona", "Arsenati", "Cruyffisme FC", "URSS", "Jatafe", "Real Dendryd", "Cracklos F.C", "Bichos Team"]
 
 # 🧮 FUNCIÓN GLOBAL PARA LA MEDIA DE PUNTOS
 def calcular_medias_globales(df_input):
