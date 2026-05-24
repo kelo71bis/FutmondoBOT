@@ -4,6 +4,9 @@ import altair as alt
 import os
 import random
 
+# 🚀 IMPORTAMOS NUESTRA PRIMERA PANTALLA MODULARIZADA
+from pantallas.menu_principal import mostrar_menu
+
 # ⚙️ CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(page_title="LaLiga Santanguissa", page_icon="🏆", layout="wide")
 
@@ -95,78 +98,13 @@ if df is not None:
         st.caption("• **2024/25**: Solo hay foto final de puntos acumulados. Sus jornadas no cuentan para récords ni MVPs.")
 
     # ==========================================
-    # PANTALLA 0: MENÚ PRINCIPAL
+    # ENRUTADOR DE PANTALLAS
     # ==========================================
+    
     if st.session_state.pantalla == "🏠 Menú Principal":
-        st.title("🏆 LaLiga Santanguissa - Panel de Control")
-        st.subheader("Bienvenido a la web oficial de estadísticas y datos históricos de LaLiga Santanguissa.")
-        st.markdown("---")
-        
-        st.write("Selecciona una sección para empezar a analizar los datos:")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("📈 Análisis por temporadas", use_container_width=True):
-                st.session_state.pantalla = "📈 Análisis por temporadas"
-                st.rerun()
-            st.caption("Consulta las tablas dinámicas por jornada y el scalextric de gráficas temporales.")
-            
-            st.markdown("##")
-            if st.button("🥇 Vitrina de Trofeos e Historial", use_container_width=True):
-                st.session_state.pantalla = "🥇 Palmarés Histórico"
-                st.rerun()
-            st.caption("El palmarés completo de ligas y copas, y el ranking de reyes de títulos.")
+        # 🔗 LLAMADA AL MÓDULO (Todo el código del menú está ahora en el otro archivo)
+        mostrar_menu(df)
 
-        with c2:
-            if st.button("🏆 El Salón de la Fama (Récords)", use_container_width=True):
-                st.session_state.pantalla = "🏆 Salón de la Fama"
-                st.rerun()
-            st.caption("El Top 10 histórico de mayores exhibiciones, rachas, desastres y el Club de los 100.")
-            
-            st.markdown("##")
-            if st.button("⚔️ Cara a Cara", use_container_width=True):
-                st.session_state.pantalla = "⚔️ Cara a Cara"
-                st.rerun()
-            st.caption("Cruza las trayectorias de dos mánagers y descubre quién manda en vuestros duelos directos.")
-            
-        st.markdown("---")
-        
-        st.subheader("⚔️ Matriz de Enfrentamientos")
-        st.caption("Lee por filas: cuántas jornadas le ha ganado el mánager de la fila al de la columna de forma directa. (Los empates suman a ambos).")
-        
-        df_panel_base = df[df['Temporada'] != '2024/25'].copy()
-        lista_seasons_panel = sorted(df_panel_base['Temporada'].unique().tolist(), reverse=True)
-        
-        seasons_panel_sel = st.multiselect(
-            "📅 Filtrar temporadas de la matriz (vacío = Todas):", 
-            lista_seasons_panel, 
-            default=[],
-            placeholder="Todas las temporadas"
-        )
-        
-        seasons_to_use = seasons_panel_sel if len(seasons_panel_sel) > 0 else lista_seasons_panel
-        
-        df_panel_filtered = df_panel_base[df_panel_base['Temporada'].isin(seasons_to_use)]
-        df_pivot_panel = df_panel_filtered.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos').dropna(how='all')
-        all_managers_panel = sorted(df_panel_filtered['Mánager'].unique().tolist())
-        
-        matriz_panel_dict = {m1: {m2: 0 for m2 in all_managers_panel} for m1 in all_managers_panel}
-        for m1 in all_managers_panel:
-            for m2 in all_managers_panel:
-                if m1 != m2 and m1 in df_pivot_panel.columns and m2 in df_pivot_panel.columns:
-                    valid_jors = df_pivot_panel[[m1, m2]].dropna()
-                    wins = (valid_jors[m1] > valid_jors[m2]).sum()
-                    ties = (valid_jors[m1] == valid_jors[m2]).sum()
-                    matriz_panel_dict[m1][m2] = int(wins + ties)
-                else:
-                    matriz_panel_dict[m1][m2] = "-"
-                    
-        df_matriz_panel = pd.DataFrame(matriz_panel_dict).T
-        st.dataframe(df_matriz_panel, use_container_width=True)
-
-    # ==========================================
-    # PANTALLA 1: ANÁLISIS POR TEMPORADAS
-    # ==========================================
     elif st.session_state.pantalla == "📈 Análisis por temporadas":
         c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
         if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
@@ -190,11 +128,24 @@ if df is not None:
             df_clasif = df_temp[df_temp['Jornada'] == jornada_max_2425].sort_values(by="Puntos_Acumulados", ascending=False)
             
             df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados"]].copy()
-            df_mostrar.columns = ["Mánager", "Pts"]
+            df_mostrar['Score Histórico'] = df_mostrar['Mánager'].map(score_historico_dict)
+            df_mostrar.columns = ["Mánager", "Pts", "Score Histórico"]
+            
             df_mostrar.index = df_mostrar.index + 1 
             df_mostrar.index.name = "Pos."
-            st.dataframe(df_mostrar.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
-            st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas no están habilitadas.")
+            df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
+            
+            col_tabla, col_info = st.columns([1, 1.8])
+            with col_tabla:
+                st.dataframe(
+                    df_mostrar, 
+                    use_container_width=True,
+                    column_config={
+                        "Score Histórico": st.column_config.NumberColumn("Score Histórico ℹ️", help="Media de puntos por jornada a lo largo de toda la historia de la liga (incluida la 24/25).")
+                    }
+                )
+            with col_info:
+                st.info("ℹ️ Para la temporada 2024/25 solo disponemos del cierre de puntos acumulados. Por este motivo, las gráficas no están habilitadas.")
                 
         else:
             df_temp['Posición'] = df_temp.groupby('Jornada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
@@ -214,7 +165,6 @@ if df is not None:
                 
                 max_punt_din = df_filtro_dinamico.groupby('Mánager')['Puntos'].max()
                 
-                # Para el mínimo, filtramos las puntuaciones que son 0 (o negativas si hubiese)
                 df_dinamico_positivos = df_filtro_dinamico[df_filtro_dinamico['Puntos'] > 0]
                 min_punt_din = df_dinamico_positivos.groupby('Mánager')['Puntos'].min()
                 
@@ -225,7 +175,6 @@ if df is not None:
                 
                 df_clasif['Máx'] = df_clasif['Mánager'].map(max_punt_din).round(1)
                 
-                # Mapeamos los mínimos. Si no hay puntuación > 0, devolvemos "-"
                 def get_min_formateado(manager):
                     val = min_punt_din.get(manager)
                     if pd.isna(val): return "-"
@@ -340,9 +289,6 @@ if df is not None:
                         df_matriz_pts_jor = df_temp_grafica.pivot(index='Mánager', columns='Jornada', values='Puntos')
                         st.dataframe(df_matriz_pts_jor.style.format(precision=1, na_rep="-"), use_container_width=True)
 
-    # ==========================================
-    # PANTALLA 2: SALÓN DE LA FAMA
-    # ==========================================
     elif st.session_state.pantalla == "🏆 Salón de la Fama":
         c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
         if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
@@ -663,7 +609,6 @@ if df is not None:
                 df_h2h = df[(df['Mánager'].isin([m1, m2])) & (df['Temporada'].isin(seasons_to_use)) & (df['Temporada'] != '2024/25')]
                 df_pivot = df_h2h.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos').dropna() if not df_h2h.empty else pd.DataFrame()
                 
-                # Para rachas históricas continuadas, necesitamos ordenar cronológicamente la matriz de forma explícita
                 df_pivot = df_pivot.sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
                 
                 total_jornadas = len(df_pivot)
@@ -671,7 +616,6 @@ if df is not None:
                 wins_m2 = (df_pivot[m2] > df_pivot[m1]).sum() if total_jornadas > 0 else 0
                 empates = (df_pivot[m1] == df_pivot[m2]).sum() if total_jornadas > 0 else 0
                 
-                # Rachas continuadas cruzando temporadas (empate rompe racha)
                 if total_jornadas > 0:
                     mask_m1_wins = df_pivot[m1] > df_pivot[m2]
                     streak_m1_h2h = mask_m1_wins.groupby((~mask_m1_wins).cumsum()).sum().max()
@@ -690,7 +634,6 @@ if df is not None:
                 st.write("Este es el resultado del cara a cara global (Ligas completas terminadas uno por encima del otro):")
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # --- MARCADOR GIGANTE ---
                 ligas_m1_final = 0
                 ligas_m2_final = 0
                 
@@ -732,13 +675,8 @@ if df is not None:
 
                 st.markdown("<br><hr>", unsafe_allow_html=True)
 
-                # --- 🗲 ESTADÍSTICAS DEL COMBATE ---
                 st.subheader("⚖️ Estadísticas del combate")
                 
-                df_m1_reg = df_h2h[df_h2h['Mánager'] == m1]
-                df_m2_reg = df_h2h[df_h2h['Mánager'] == m2]
-                
-                # Función cálculo medios
                 def calcular_media_h2h(manager_name):
                     df_m = df[(df['Mánager'] == manager_name) & (df['Temporada'].isin(seasons_to_use))]
                     df_reg = df_m[df_m['Temporada'] != '2024/25']
@@ -757,6 +695,9 @@ if df is not None:
 
                 media_m1 = calcular_media_h2h(m1)
                 media_m2 = calcular_media_h2h(m2)
+                
+                df_m1_reg = df_h2h[df_h2h['Mánager'] == m1]
+                df_m2_reg = df_h2h[df_h2h['Mánager'] == m2]
                 
                 max_jor_m1 = df_m1_reg['Puntos'].max() if not df_m1_reg.empty else 0
                 max_jor_m2 = df_m2_reg['Puntos'].max() if not df_m2_reg.empty else 0
@@ -848,7 +789,6 @@ if df is not None:
                 st.markdown(html_table, unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
 
-                # --- 4. SANGRE CON EJE X VISIBLE ---
                 if total_jornadas > 0:
                     st.subheader("🩸 La Sangría: Diferencia de Puntos Directa")
                     st.caption("Eje X activo cronológicamente. Barras hacia arriba (verde) = gana el Contendiente 1. Barras hacia abajo (rojo) = gana el Contendiente 2.")
@@ -868,7 +808,6 @@ if df is not None:
                     ).properties(height=380)
                     st.altair_chart(chart_diff, use_container_width=True)
 
-                # --- 5. TABLA HISTÓRICA INMUTABLE ---
                 st.markdown("---")
                 st.subheader("📈 Histórico Temporadas")
                 st.caption("Esta tabla refleja el cierre total de puntos acumulados al final de cada liga compartida.")
@@ -903,7 +842,7 @@ if df is not None:
         if c_nav4.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
             
         st.title(st.session_state.pantalla)
-        st.info("🚧 Estamos trabajando en esta sección. Te jodes.")
+        st.info("🚧 Estamos trabajando en esta sección.")
 
 else:
     st.error("❌ Faltan los archivos de datos globales.")
