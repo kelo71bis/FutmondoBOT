@@ -78,7 +78,8 @@ def mostrar_royal_rumble(df):
             # Matrices Enfrentamientos y Padreadas (Solo jornadas regulares)
             shared_reg = [s for s in shared if s != '2024/25']
             if shared_reg:
-                df_pair = df_pivot_reg.loc[shared_reg, [m1, m2]].dropna()
+                # AQUÍ ESTÁ EL ARREGLO DEL BUG DE JATAFE (Añadido sort_index para no mezclar las temporadas)
+                df_pair = df_pivot_reg.loc[shared_reg, [m1, m2]].dropna().sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
                 tot_jors = len(df_pair)
                 if tot_jors > 0:
                     wins = (df_pair[m1] > df_pair[m2]).sum()
@@ -116,18 +117,18 @@ def mostrar_royal_rumble(df):
                 df_diff_med_disp.at[m1, m2] = f"{diff_med:.1f}"
                 df_diff_med_num.at[m1, m2] = diff_med
 
-    # 3. Función segura para aplicar el Heatmap sin errores de variables vacías
+    # 3. Función segura para aplicar el Heatmap (Color RdBu: Red a Blue)
     def aplicar_heatmap(df_display, df_numeric, vmin, vmax):
         if df_numeric.isna().all().all():
             return df_display
-        return df_display.style.background_gradient(axis=None, gmap=df_numeric, cmap='RdYlGn', vmin=vmin, vmax=vmax)
+        return df_display.style.background_gradient(axis=None, gmap=df_numeric, cmap='RdBu', vmin=vmin, vmax=vmax)
 
     # 4. Mostrar pestañas
     tab1, tab2, tab3, tab4 = st.tabs(["⚔️ Matriz de Enfrentamientos", "👨‍👦 Matriz de Padreadas", "🎯 Diferencia Pts Totales", "⚖️ Diferencia Pts Medios"])
     
     with tab1:
         st.subheader("⚔️ Matriz de Enfrentamientos")
-        st.caption("Lee por filas: Jornadas ganadas + Empates (Porcentaje de éxito vs rival). Color verde = Dominador.")
+        st.caption("Lee por filas: Jornadas ganadas + Empates (Porcentaje de éxito vs rival). Color azul = Dominador.")
         styled_enf = aplicar_heatmap(df_enf_disp, df_enf_num, vmin=0, vmax=100)
         st.dataframe(styled_enf, use_container_width=True)
         
@@ -140,7 +141,7 @@ def mostrar_royal_rumble(df):
         
     with tab3:
         st.subheader("🎯 Diferencia de Puntos (Totales)")
-        st.caption("Lee por filas: Suma de Puntos de la Fila - Suma de Puntos de la Columna en las temporadas que ambos jugaron juntos.")
+        st.caption("Lee por filas: Suma de Puntos de la Fila - Suma de Puntos de la Columna en las temporadas compartidas.")
         max_tot = df_diff_tot_num.abs().max().max() if not df_diff_tot_num.isna().all().all() else 1
         styled_tot = aplicar_heatmap(df_diff_tot_disp, df_diff_tot_num, vmin=-max_tot, vmax=max_tot)
         st.dataframe(styled_tot, use_container_width=True)
