@@ -153,11 +153,13 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
 
             st.subheader("⚖️ Estadísticas del duelo")
             
-            # Formateador inteligente de decimales
+            # Formateador inteligente a prueba de balas
             def fmt_dec(val):
                 if pd.isna(val): return "-"
-                res = f"{val:.1f}"
-                return res[:-2] if res.endswith(".0") else res
+                if isinstance(val, (int, float)):
+                    res = f"{val:.1f}"
+                    return res[:-2] if res.endswith(".0") else res
+                return str(val) # Si es texto, lo devuelve tal cual
             
             def calcular_media_h2h(manager_name):
                 df_m = df_clean[(df_clean['Mánager'] == manager_name) & (df_clean['Temporada'].isin(seasons_to_use))]

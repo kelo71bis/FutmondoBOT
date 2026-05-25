@@ -163,7 +163,6 @@ def mostrar_salon_fama(df):
     st.subheader("👨‍👦 Mayores Padreadas (Cara a Cara)")
     st.caption("Top 10 histórico de jornadas consecutivas donde un mánager superó en puntos a otro de forma directa.")
     
-    # Lógica de cálculo masivo para padreadas
     df_pivot_sf = df_records.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos')
     df_pivot_sf = df_pivot_sf.sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
     
@@ -181,10 +180,24 @@ def mostrar_salon_fama(df):
                         streaks = mask.groupby(group).sum()
                         max_streak = int(streaks.max())
                         if max_streak > 0:
+                            best_group = streaks.idxmax()
+                            streak_idx = valid_df[mask & (group == best_group)].index
+                            s_temp, s_jor = streak_idx[0]
+                            e_temp, e_jor = streak_idx[-1]
+                            
+                            if s_temp == e_temp:
+                                temp_str = s_temp
+                                rng_str = f"J{int(s_jor)} - J{int(e_jor)}"
+                            else:
+                                temp_str = f"Multitemporada"
+                                rng_str = f"{s_temp} J{int(s_jor)} - {e_temp} J{int(e_jor)}"
+                                
                             padreadas_list.append({
                                 'Padre (Ganador)': m1,
                                 'Hijo (Perdedor)': m2,
-                                'Jornadas Seguidas': max_streak
+                                'Jornadas Seguidas': max_streak,
+                                'Rango': rng_str,
+                                'Temporada': temp_str
                             })
                             
     if padreadas_list:

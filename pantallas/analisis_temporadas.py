@@ -91,10 +91,10 @@ def mostrar_analisis(df, score_historico_dict):
             
             st.dataframe(df_mostrar, use_container_width=True)
             
-            # Chivato de empanaos
+            # Formateo de la frase de los empanaos según la nueva petición
             empanaos = df_filtro_dinamico[df_filtro_dinamico['Puntos'] == 0]['Mánager'].unique()
             if len(empanaos) > 0:
-                st.markdown(f"<p style='font-size:14px; color:#888888;'>💤 <b>Empanaos (0 pts en este rango):</b> {', '.join(empanaos)}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='font-size:14px; color:#888888;'>💤 <b>Lista de empanaos de la liga (equipos que han hecho 0 puntos en alguna jornada):</b> {', '.join(empanaos)}</p>", unsafe_allow_html=True)
             
         with col2:
             lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())
