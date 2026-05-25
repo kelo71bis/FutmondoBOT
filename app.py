@@ -8,6 +8,7 @@ from pantallas.analisis_temporadas import mostrar_analisis
 from pantallas.salon_fama import mostrar_salon_fama
 from pantallas.palmares import mostrar_palmares
 from pantallas.cara_a_cara import mostrar_cara_a_cara
+from pantallas.royal_rumble import mostrar_royal_rumble
 
 # ⚙️ CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(page_title="LaLiga Santanguissa", page_icon="🏆", layout="wide")
@@ -74,7 +75,7 @@ if df is not None:
 
     # Barra Lateral
     st.sidebar.title("⚽ Menú de Liga")
-    opciones_sidebar = ["🏠 Menú Principal", "📈 Análisis por temporadas", "🏆 Salón de la Fama", "🥇 Palmarés Histórico", "👤 Perfiles (Próximamente)", "⚔️ Cara a Cara"]
+    opciones_sidebar = ["🏠 Menú Principal", "📈 Análisis por temporadas", "🏆 Salón de la Fama", "🥇 Palmarés Histórico", "⚔️ Cara a Cara", "🤼 Royal Rumble", "👤 Perfiles (Próximamente)"]
     
     idx_actual = opciones_sidebar.index(st.session_state.pantalla) if st.session_state.pantalla in opciones_sidebar else 0
     menu_sidebar = st.sidebar.radio("Navegación Rápida", opciones_sidebar, index=idx_actual)
@@ -106,6 +107,9 @@ if df is not None:
         
     elif st.session_state.pantalla == "⚔️ Cara a Cara":
         mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21)
+        
+    elif st.session_state.pantalla == "🤼 Royal Rumble":
+        mostrar_royal_rumble(df)
         
     elif st.session_state.pantalla == "👤 Perfiles (Próximamente)":
         st.title(st.session_state.pantalla)
