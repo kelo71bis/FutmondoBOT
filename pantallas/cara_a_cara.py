@@ -13,67 +13,81 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
     st.title("🏟️ Coliseo Cara a Cara")
     st.markdown("---")
     
-    lista_todos_managers = sorted(df['Mánager'].unique().tolist())
+    df_clean = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26'))].copy()
+    lista_todos_managers = sorted(df_clean['Mánager'].unique().tolist())
     
-    if st.button("🎲 Combate Aleatorio (Sorpréndeme)", use_container_width=True):
+    # Función para el botón aleatorio
+    def tirada_aleatoria():
         pares_validos = []
         for m_a in lista_todos_managers:
             for m_b in lista_todos_managers:
                 if m_a != m_b:
-                    seasons_a = set(df[df['Mánager'] == m_a]['Temporada'].unique())
-                    seasons_b = set(df[df['Mánager'] == m_b]['Temporada'].unique())
+                    seasons_a = set(df_clean[df_clean['Mánager'] == m_a]['Temporada'].unique())
+                    seasons_b = set(df_clean[df_clean['Mánager'] == m_b]['Temporada'].unique())
                     if m_a in clasificacion_2020_21: seasons_a.add("2020/21")
                     if m_b in clasificacion_2020_21: seasons_b.add("2020/21")
                     if len(seasons_a.intersection(seasons_b)) > 0:
                         pares_validos.append((m_a, m_b))
         if pares_validos:
             chosen = random.choice(pares_validos)
-            st.session_state.m1_sel = chosen[0]
-            st.session_state.m2_sel = chosen[1]
-            st.rerun()
+            st.session_state['m1_cc'] = chosen[0]
+            st.session_state['m2_cc'] = chosen[1]
+
+    # Inicializar las keys del session_state de forma segura
+    if 'm1_cc' not in st.session_state:
+        st.session_state['m1_cc'] = "-- Selecciona un Mánager --"
+    if 'm2_cc' not in st.session_state:
+        st.session_state['m2_cc'] = "-- Esperando rival --"
+
+    st.button("🎲 Duelo Aleatorio (Sorpréndeme)", use_container_width=True, on_click=tirada_aleatoria)
 
     col_f1, col_f2, col_f3 = st.columns([1, 1, 1])
+    
     with col_f1:
-        m1 = st.selectbox("🔴 Contendiente 1:", ["-- Selecciona un Mánager --"] + lista_todos_managers, index=(lista_todos_managers.index(st.session_state.m1_sel)+1 if st.session_state.m1_sel in lista_todos_managers else 0))
-        st.session_state.m1_sel = m1
+        opciones_m1 = ["-- Selecciona un Mánager --"] + lista_todos_managers
+        # El propio parámetro key vincula el valor mostrado con la memoria automáticamente
+        m1 = st.selectbox("🔴 Contendiente 1:", opciones_m1, key='m1_cc')
         
     valid_m2 = []
     if m1 != "-- Selecciona un Mánager --":
-        seasons_m1 = set(df[df['Mánager'] == m1]['Temporada'].unique())
+        seasons_m1 = set(df_clean[df_clean['Mánager'] == m1]['Temporada'].unique())
         if m1 in clasificacion_2020_21: seasons_m1.add("2020/21")
         
         for m in lista_todos_managers:
             if m != m1:
-                seasons_m = set(df[df['Mánager'] == m]['Temporada'].unique())
+                seasons_m = set(df_clean[df_clean['Mánager'] == m]['Temporada'].unique())
                 if m in clasificacion_2020_21: seasons_m.add("2020/21")
                 if len(seasons_m1.intersection(seasons_m)) > 0:
                     valid_m2.append(m)
     
     with col_f2:
         opciones_m2 = ["-- Esperando rival --"] if m1 == "-- Selecciona un Mánager --" else ["-- Selecciona un Mánager --"] + valid_m2
-        idx_m2 = opciones_m2.index(st.session_state.m2_sel) if st.session_state.m2_sel in opciones_m2 else 0
-        m2 = st.selectbox("🔵 Contendiente 2:", opciones_m2, index=idx_m2)
-        st.session_state.m2_sel = m2
+        
+        # Seguro para que si m1 cambia, m2 no se quede con un valor inválido que rompa la app
+        if st.session_state.get('m2_cc') not in opciones_m2:
+            st.session_state['m2_cc'] = opciones_m2[0]
+            
+        m2 = st.selectbox("🔵 Contendiente 2:", opciones_m2, key='m2_cc')
         
     if m1 == "-- Selecciona un Mánager --" or m2 == "-- Selecciona un Mánager --" or m2 == "-- Esperando rival --":
         st.info("👆 Selecciona a dos mánagers o dale al dado para abrir las puertas del Coliseo.")
     else:
-        seasons_m1 = set(df[df['Mánager'] == m1]['Temporada'].unique())
-        seasons_m2 = set(df[df['Mánager'] == m2]['Temporada'].unique())
+        seasons_m1 = set(df_clean[df_clean['Mánager'] == m1]['Temporada'].unique())
+        seasons_m2 = set(df_clean[df_clean['Mánager'] == m2]['Temporada'].unique())
         if m1 in clasificacion_2020_21: seasons_m1.add("2020/21")
         if m2 in clasificacion_2020_21: seasons_m2.add("2020/21")
         
         temporadas_comunes = sorted(list(seasons_m1.intersection(seasons_m2)), reverse=True)
         
         with col_f3:
-            temporadas_h2h_sel = st.multiselect("📅 Temporadas del combate (vacío = Todas):", temporadas_comunes, default=[], placeholder="Todas las temporadas compartidas")
+            temporadas_h2h_sel = st.multiselect("📅 Temporadas del duelo (vacío = Todas):", temporadas_comunes, default=[], placeholder="Todas las temporadas compartidas")
         
         seasons_to_use = temporadas_h2h_sel if len(temporadas_h2h_sel) > 0 else temporadas_comunes
         
         if len(seasons_to_use) == 0:
             st.warning("⚠️ No hay temporadas disponibles para analizar.")
         else:
-            df_h2h = df[(df['Mánager'].isin([m1, m2])) & (df['Temporada'].isin(seasons_to_use)) & (df['Temporada'] != '2024/25')]
+            df_h2h = df_clean[(df_clean['Mánager'].isin([m1, m2])) & (df_clean['Temporada'].isin(seasons_to_use)) & (df_clean['Temporada'] != '2024/25')]
             df_pivot = df_h2h.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos').dropna() if not df_h2h.empty else pd.DataFrame()
             
             df_pivot = df_pivot.sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
@@ -104,7 +118,7 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
             ligas_m1_final = 0
             ligas_m2_final = 0
             
-            df_finales_h2h = df[(df['Mánager'].isin([m1, m2])) & (df['Temporada'].isin(seasons_to_use))].copy()
+            df_finales_h2h = df_clean[(df_clean['Mánager'].isin([m1, m2])) & (df_clean['Temporada'].isin(seasons_to_use))].copy()
             if not df_finales_h2h.empty:
                 df_fin_loc = df_finales_h2h.loc[df_finales_h2h.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()]
                 df_fin_pivot = df_fin_loc.pivot(index='Temporada', columns='Mánager', values='Puntos_Acumulados').dropna()
@@ -142,10 +156,10 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
 
             st.markdown("<br><hr>", unsafe_allow_html=True)
 
-            st.subheader("⚖️ Estadísticas del combate")
+            st.subheader("⚖️ Estadísticas del duelo")
             
             def calcular_media_h2h(manager_name):
-                df_m = df[(df['Mánager'] == manager_name) & (df['Temporada'].isin(seasons_to_use))]
+                df_m = df_clean[(df_clean['Mánager'] == manager_name) & (df_clean['Temporada'].isin(seasons_to_use))]
                 df_reg = df_m[df_m['Temporada'] != '2024/25']
                 s_r = df_reg['Puntos'].sum()
                 c_r = len(df_reg)
@@ -174,7 +188,7 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
             min_jor_m1_str = f"{valid_min_m1.min():.1f}" if not valid_min_m1.empty else "-"
             min_jor_m2_str = f"{valid_min_m2.min():.1f}" if not valid_min_m2.empty else "-"
             
-            df_all_seasons = df[df['Temporada'].isin(seasons_to_use) & (df['Temporada'] != '2024/25')].copy()
+            df_all_seasons = df_clean[df_clean['Temporada'].isin(seasons_to_use) & (df_clean['Temporada'] != '2024/25')].copy()
             if not df_all_seasons.empty:
                 df_all_seasons['Rank_Jor'] = df_all_seasons.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
                 veces_lider_m1 = len(df_all_seasons[(df_all_seasons['Mánager'] == m1) & (df_all_seasons['Rank_Jor'] == 1)])
@@ -279,7 +293,7 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
             st.subheader("📈 Histórico Temporadas")
             st.caption("Esta tabla refleja el cierre total de puntos acumulados al final de cada liga compartida.")
             
-            df_inmutable_base = df.loc[df.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()].copy()
+            df_inmutable_base = df_clean.loc[df_clean.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()].copy()
             df_inmutable_fil = df_inmutable_base[(df_inmutable_base['Mánager'].isin([m1, m2])) & (df_inmutable_base['Temporada'].isin(seasons_to_use))]
             
             if not df_inmutable_fil.empty:
