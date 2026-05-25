@@ -78,10 +78,10 @@ def mostrar_analisis(df, score_historico_dict):
                 return round(val, 1)
             df_clasif['Mín'] = df_clasif['Mánager'].apply(get_min_formateado)
             
-            df_clasif['Líder(J)'] = df_clasif['Mánager'].map(jors_lider_acu).fillna(0).astype(int)
-            df_clasif['1º/J'] = df_clasif['Mánager'].map(jors_lider_jor).fillna(0).astype(int)
+            df_clasif['Líder(G)'] = df_clasif['Mánager'].map(jors_lider_acu).fillna(0).astype(int)
+            df_clasif['Líder(J)'] = df_clasif['Mánager'].map(jors_lider_jor).fillna(0).astype(int)
             
-            df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Máx", "Mín", "Líder(J)", "1º/J"]].copy()
+            df_mostrar = df_clasif[["Mánager", "Puntos_Acumulados", "Máx", "Mín", "Líder(G)", "Líder(J)"]].copy()
             df_mostrar.rename(columns={"Puntos_Acumulados": "Pts"}, inplace=True)
             
             df_mostrar = df_mostrar.reset_index(drop=True)
@@ -90,6 +90,11 @@ def mostrar_analisis(df, score_historico_dict):
             df_mostrar = df_mostrar.reset_index().set_index(['Pos.', 'Mánager'])
             
             st.dataframe(df_mostrar, use_container_width=True)
+            
+            # Chivato de empanaos
+            empanaos = df_filtro_dinamico[df_filtro_dinamico['Puntos'] == 0]['Mánager'].unique()
+            if len(empanaos) > 0:
+                st.markdown(f"<p style='font-size:14px; color:#888888;'>💤 <b>Empanaos (0 pts en este rango):</b> {', '.join(empanaos)}</p>", unsafe_allow_html=True)
             
         with col2:
             lista_managers_disponibles = sorted(df_temp['Mánager'].unique().tolist())

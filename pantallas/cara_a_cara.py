@@ -13,10 +13,9 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
     st.title("🏟️ Coliseo Cara a Cara")
     st.markdown("---")
     
-    df_clean = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26'))].copy()
+    df_clean = df.copy()
     lista_todos_managers = sorted(df_clean['Mánager'].unique().tolist())
     
-    # Función para el botón aleatorio
     def tirada_aleatoria():
         pares_validos = []
         for m_a in lista_todos_managers:
@@ -33,7 +32,6 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
             st.session_state['m1_cc'] = chosen[0]
             st.session_state['m2_cc'] = chosen[1]
 
-    # Inicializar las keys del session_state de forma segura
     if 'm1_cc' not in st.session_state:
         st.session_state['m1_cc'] = "-- Selecciona un Mánager --"
     if 'm2_cc' not in st.session_state:
@@ -45,7 +43,6 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
     
     with col_f1:
         opciones_m1 = ["-- Selecciona un Mánager --"] + lista_todos_managers
-        # El propio parámetro key vincula el valor mostrado con la memoria automáticamente
         m1 = st.selectbox("🔴 Contendiente 1:", opciones_m1, key='m1_cc')
         
     valid_m2 = []
@@ -62,8 +59,6 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
     
     with col_f2:
         opciones_m2 = ["-- Esperando rival --"] if m1 == "-- Selecciona un Mánager --" else ["-- Selecciona un Mánager --"] + valid_m2
-        
-        # Seguro para que si m1 cambia, m2 no se quede con un valor inválido que rompa la app
         if st.session_state.get('m2_cc') not in opciones_m2:
             st.session_state['m2_cc'] = opciones_m2[0]
             
@@ -158,6 +153,12 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
 
             st.subheader("⚖️ Estadísticas del duelo")
             
+            # Formateador inteligente de decimales
+            def fmt_dec(val):
+                if pd.isna(val): return "-"
+                res = f"{val:.1f}"
+                return res[:-2] if res.endswith(".0") else res
+            
             def calcular_media_h2h(manager_name):
                 df_m = df_clean[(df_clean['Mánager'] == manager_name) & (df_clean['Temporada'].isin(seasons_to_use))]
                 df_reg = df_m[df_m['Temporada'] != '2024/25']
@@ -224,14 +225,14 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
                 
                 html_table += f"""
 <tr style="border-bottom: 1px solid #f0f2f6;">
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{media_final_m1:.0f}</td>
-<td style="color: #7f7f7f; font-weight: 500;" title="Puntuación acumulada media al cierre de los años analizados">Media Puntos por Temporada ℹ️</td>
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{media_final_m2:.0f}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{fmt_dec(media_final_m1)}</td>
+<td style="color: #7f7f7f; font-weight: 500;">Media Puntos por Temporada</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{fmt_dec(media_final_m2)}</td>
 </tr>
 <tr style="border-bottom: 1px solid #f0f2f6;">
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{max_temp_p_m1:.0f}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{fmt_dec(max_temp_p_m1)}</td>
 <td style="color: #7f7f7f; font-weight: 500;">Máxima Puntuación de Temporada</td>
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{max_temp_p_m2:.0f}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{fmt_dec(max_temp_p_m2)}</td>
 </tr>"""
 
             html_table += f"""
@@ -246,9 +247,9 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
 <td style="font-size: 22px; font-weight: bold; padding: 12px;">{min_jor_m2_str}</td>
 </tr>
 <tr style="border-bottom: 1px solid #f0f2f6;">
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{wins_m1}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{wins_m1} <span style="font-size: 14px; color: #a0a0a0;">({pct_m1:.1f}%)</span></td>
 <td style="color: #7f7f7f; font-weight: 500;">Jornadas siendo mejor</td>
-<td style="font-size: 22px; font-weight: bold; padding: 12px;">{wins_m2}</td>
+<td style="font-size: 22px; font-weight: bold; padding: 12px;">{wins_m2} <span style="font-size: 14px; color: #a0a0a0;">({pct_m2:.1f}%)</span></td>
 </tr>
 <tr style="border-bottom: 1px solid #f0f2f6;">
 <td style="font-size: 22px; font-weight: bold; padding: 12px;">{int(streak_m1_h2h)}</td>
@@ -262,7 +263,7 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
 </tr>
 <tr style="border-bottom: 1px solid #f0f2f6;">
 <td style="font-size: 22px; font-weight: bold; padding: 12px;">{racha_max_m1}</td>
-<td style="color: #7f7f7f; font-weight: 500;">Mejor Racha On Fire (Jornadas líder consecutivas)</td>
+<td style="color: #7f7f7f; font-weight: 500;">Mejor Racha (Jornadas líder consecutivas)</td>
 <td style="font-size: 22px; font-weight: bold; padding: 12px;">{racha_max_m2}</td>
 </tr>
 </table>
@@ -307,10 +308,5 @@ def mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21):
                 df_matriz_finales.loc['2020/21'] = {m1: f"Pos. {idx_m1+1} (Sin Pts)", m2: f"Pos. {idx_m2+1} (Sin Pts)"}
             
             df_matriz_finales = df_matriz_finales.sort_index(ascending=False)
-            
-            def format_mixed(val):
-                if isinstance(val, (int, float)):
-                    return f"{val:.0f}"
-                return val if pd.notna(val) else "-"
                 
-            st.dataframe(df_matriz_finales.map(format_mixed), use_container_width=True)
+            st.dataframe(df_matriz_finales.map(fmt_dec), use_container_width=True)

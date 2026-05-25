@@ -12,7 +12,6 @@ def mostrar_salon_fama(df):
     st.write("Consulta los mayores hitos, desastres y rachas de la historia de LaLiga Santanguissa.")
     st.markdown("---")
     
-    # Base de datos COMPLETA (Ahora la J1 de la 2025/26 fluye libremente con sus puntos harcodeados)
     df_all_seasons = df.copy()
     
     col_filtro_sf, _ = st.columns([1, 3])
@@ -27,7 +26,6 @@ def mostrar_salon_fama(df):
         df_filtered = df_all_seasons.copy()
         texto_filtro = "Todas las temporadas"
         
-    # Filtramos la 2024/25 SOLO para las métricas de jornadas aisladas
     df_records = df_filtered[df_filtered['Temporada'] != '2024/25'].copy()
     df_desastres = df_records[df_records['Puntos'] > 0]
     
@@ -76,7 +74,7 @@ def mostrar_salon_fama(df):
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.subheader("🏆 Mayor Puntuación Final")
-        top10_temp_max = df_finales.nlargest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Rank_Temp_Final' if 'Rank_Temp_Final' in df_finales.columns else 'Pos. Final']]
+        top10_temp_max = df_finales.nlargest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Pos. Final']]
         top10_temp_max.columns = ['Mánager', 'Puntos Totales', 'Temporada', 'Pos. Final']
         top10_temp_max.index = range(1, 1 + len(top10_temp_max))
         top10_temp_max.index.name = "Pos."
@@ -84,7 +82,7 @@ def mostrar_salon_fama(df):
         
     with col_t2:
         st.subheader("📉 Peor Puntuación Final")
-        top10_temp_min = df_finales.nsmallest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Rank_Temp_Final' if 'Rank_Temp_Final' in df_finales.columns else 'Pos. Final']]
+        top10_temp_min = df_finales.nsmallest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Pos. Final']]
         top10_temp_min.columns = ['Mánager', 'Puntos Totales', 'Temporada', 'Pos. Final']
         top10_temp_min.index = range(1, 1 + len(top10_temp_min))
         top10_temp_min.index.name = "Pos."
@@ -160,6 +158,41 @@ def mostrar_salon_fama(df):
     with col_r4:
         st.caption("💩 **Jornadas consecutivas dando pena** (Semanas seguidas siendo el peor de la jornada)")
         st.dataframe(top10_rachas_peor_jor.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader("👨‍👦 Mayores Padreadas (Cara a Cara)")
+    st.caption("Top 10 histórico de jornadas consecutivas donde un mánager superó en puntos a otro de forma directa.")
+    
+    # Lógica de cálculo masivo para padreadas
+    df_pivot_sf = df_records.pivot(index=['Temporada', 'Jornada'], columns='Mánager', values='Puntos')
+    df_pivot_sf = df_pivot_sf.sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
+    
+    managers_sf = df_records['Mánager'].unique().tolist()
+    padreadas_list = []
+    
+    for m1 in managers_sf:
+        for m2 in managers_sf:
+            if m1 != m2 and m1 in df_pivot_sf.columns and m2 in df_pivot_sf.columns:
+                valid_df = df_pivot_sf[[m1, m2]].dropna()
+                if not valid_df.empty:
+                    mask = valid_df[m1] > valid_df[m2]
+                    if mask.any():
+                        group = (~mask).cumsum()
+                        streaks = mask.groupby(group).sum()
+                        max_streak = int(streaks.max())
+                        if max_streak > 0:
+                            padreadas_list.append({
+                                'Padre (Ganador)': m1,
+                                'Hijo (Perdedor)': m2,
+                                'Jornadas Seguidas': max_streak
+                            })
+                            
+    if padreadas_list:
+        df_padreadas = pd.DataFrame(padreadas_list)
+        df_padreadas = df_padreadas.sort_values(by=['Jornadas Seguidas', 'Padre (Ganador)'], ascending=[False, True]).head(10).reset_index(drop=True)
+        df_padreadas.index = df_padreadas.index + 1
+        df_padreadas.index.name = "Pos."
+        st.dataframe(df_padreadas.reset_index().set_index(['Pos.', 'Padre (Ganador)']), use_container_width=True)
 
     st.markdown("---")
 
