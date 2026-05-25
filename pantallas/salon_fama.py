@@ -2,11 +2,12 @@ import streamlit as st
 import pandas as pd
 
 def mostrar_salon_fama(df):
-    c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
+    c_nav1, c_nav2, c_nav3, c_nav4, c_nav5 = st.columns(5)
     if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
     if c_nav2.button("📈 Análisis", use_container_width=True): st.session_state.pantalla = "📈 Análisis por temporadas"; st.rerun()
-    if c_nav3.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
+    if c_nav3.button("🥇 Palmarés Histórico", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
     if c_nav4.button("⚔️ Cara a Cara", use_container_width=True): st.session_state.pantalla = "⚔️ Cara a Cara"; st.rerun()
+    if c_nav5.button("🤼 Royal Rumble", use_container_width=True): st.session_state.pantalla = "🤼 Royal Rumble"; st.rerun()
         
     st.title("🏆 El Salón de la Fama")
     st.write("Consulta los mayores hitos, desastres y rachas de la historia de LaLiga Santanguissa.")
