@@ -78,7 +78,6 @@ def mostrar_royal_rumble(df):
             # Matrices Enfrentamientos y Padreadas (Solo jornadas regulares)
             shared_reg = [s for s in shared if s != '2024/25']
             if shared_reg:
-                # AQUÍ ESTÁ EL ARREGLO DEL BUG DE JATAFE (Añadido sort_index para no mezclar las temporadas)
                 df_pair = df_pivot_reg.loc[shared_reg, [m1, m2]].dropna().sort_index(level=['Temporada', 'Jornada'], ascending=[True, True])
                 tot_jors = len(df_pair)
                 if tot_jors > 0:
@@ -117,11 +116,11 @@ def mostrar_royal_rumble(df):
                 df_diff_med_disp.at[m1, m2] = f"{diff_med:.1f}"
                 df_diff_med_num.at[m1, m2] = diff_med
 
-    # 3. Función segura para aplicar el Heatmap (Color RdBu: Red a Blue)
-    def aplicar_heatmap(df_display, df_numeric, vmin, vmax):
+    # 3. Función segura para aplicar el Heatmap (Acepta paleta dinámica)
+    def aplicar_heatmap(df_display, df_numeric, vmin, vmax, cmap='RdBu'):
         if df_numeric.isna().all().all():
             return df_display
-        return df_display.style.background_gradient(axis=None, gmap=df_numeric, cmap='RdBu', vmin=vmin, vmax=vmax)
+        return df_display.style.background_gradient(axis=None, gmap=df_numeric, cmap=cmap, vmin=vmin, vmax=vmax)
 
     # 4. Mostrar pestañas
     tab1, tab2, tab3, tab4 = st.tabs(["⚔️ Matriz de Enfrentamientos", "👨‍👦 Matriz de Padreadas", "🎯 Diferencia Pts Totales", "⚖️ Diferencia Pts Medios"])
@@ -129,26 +128,27 @@ def mostrar_royal_rumble(df):
     with tab1:
         st.subheader("⚔️ Matriz de Enfrentamientos")
         st.caption("Lee por filas: Jornadas ganadas + Empates (Porcentaje de éxito vs rival). Color azul = Dominador.")
-        styled_enf = aplicar_heatmap(df_enf_disp, df_enf_num, vmin=0, vmax=100)
+        styled_enf = aplicar_heatmap(df_enf_disp, df_enf_num, vmin=0, vmax=100, cmap='RdBu')
         st.dataframe(styled_enf, use_container_width=True)
         
     with tab2:
         st.subheader("👨‍👦 Matriz de Padreadas")
         st.caption("Lee por filas: Récord máximo de jornadas seguidas superando en puntos a la columna (sin empates).")
         max_padr = df_padr_num.max().max() if not df_padr_num.isna().all().all() else 1
-        styled_padr = aplicar_heatmap(df_padr_disp, df_padr_num, vmin=0, vmax=max_padr)
+        # Usamos 'Blues' para esta matriz específica (escala de un solo color)
+        styled_padr = aplicar_heatmap(df_padr_disp, df_padr_num, vmin=0, vmax=max_padr, cmap='Blues')
         st.dataframe(styled_padr, use_container_width=True)
         
     with tab3:
         st.subheader("🎯 Diferencia de Puntos (Totales)")
         st.caption("Lee por filas: Suma de Puntos de la Fila - Suma de Puntos de la Columna en las temporadas compartidas.")
         max_tot = df_diff_tot_num.abs().max().max() if not df_diff_tot_num.isna().all().all() else 1
-        styled_tot = aplicar_heatmap(df_diff_tot_disp, df_diff_tot_num, vmin=-max_tot, vmax=max_tot)
+        styled_tot = aplicar_heatmap(df_diff_tot_disp, df_diff_tot_num, vmin=-max_tot, vmax=max_tot, cmap='RdBu')
         st.dataframe(styled_tot, use_container_width=True)
         
     with tab4:
         st.subheader("⚖️ Diferencia de Puntos (Medias)")
         st.caption("Lee por filas: Media de puntos (Fila) - Media de puntos (Columna) en sus temporadas compartidas.")
         max_med = df_diff_med_num.abs().max().max() if not df_diff_med_num.isna().all().all() else 1
-        styled_med = aplicar_heatmap(df_diff_med_disp, df_diff_med_num, vmin=-max_med, vmax=max_med)
+        styled_med = aplicar_heatmap(df_diff_med_disp, df_diff_med_num, vmin=-max_med, vmax=max_med, cmap='RdBu')
         st.dataframe(styled_med, use_container_width=True)
