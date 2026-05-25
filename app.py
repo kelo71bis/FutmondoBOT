@@ -28,7 +28,7 @@ def cargar_datos():
         mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
         
         df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
-        
+            
         if os.path.exists(ruta_ligas):
             df_ligas = pd.read_excel(ruta_ligas)
             df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
@@ -71,8 +71,6 @@ if df is not None:
     
     # Inicializar Session State
     if 'pantalla' not in st.session_state: st.session_state.pantalla = "🏠 Menú Principal"
-    if 'm1_sel' not in st.session_state: st.session_state.m1_sel = "-- Selecciona un Mánager --"
-    if 'm2_sel' not in st.session_state: st.session_state.m2_sel = "-- Selecciona un Mánager --"
 
     # Barra Lateral
     st.sidebar.title("⚽ Menú de Liga")
@@ -110,14 +108,8 @@ if df is not None:
         mostrar_cara_a_cara(df, df_ligas, df_copas, clasificacion_2020_21)
         
     elif st.session_state.pantalla == "👤 Perfiles (Próximamente)":
-        c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
-        if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
-        if c_nav2.button("📈 Análisis", use_container_width=True): st.session_state.pantalla = "📈 Análisis por temporadas"; st.rerun()
-        if c_nav3.button("🏆 Salón Fama", use_container_width=True): st.session_state.pantalla = "🏆 Salón de la Fama"; st.rerun()
-        if c_nav4.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
-            
         st.title(st.session_state.pantalla)
-        st.info("🚧 Estamos trabajando en esta sección. Te jodes.")
+        st.info("🚧 Estamos trabajando en esta sección.")
 
 else:
     st.error("❌ Faltan los archivos de datos globales.")

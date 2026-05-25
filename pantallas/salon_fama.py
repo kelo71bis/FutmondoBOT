@@ -12,8 +12,8 @@ def mostrar_salon_fama(df):
     st.write("Consulta los mayores hitos, desastres y rachas de la historia de LaLiga Santanguissa.")
     st.markdown("---")
     
-    # Base de datos COMPLETA (incluyendo 2024/25) para los récords finales
-    df_all_seasons = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26'))].copy()
+    # Base de datos COMPLETA (Ahora la J1 de la 2025/26 fluye libremente con sus puntos harcodeados)
+    df_all_seasons = df.copy()
     
     col_filtro_sf, _ = st.columns([1, 3])
     with col_filtro_sf:
@@ -70,16 +70,13 @@ def mostrar_salon_fama(df):
     st.markdown("---")
     
     st.header("👑 Récords de Temporada Completa")
-    # Para los récords finales SÍ usamos df_filtered (que incluye la 2024/25)
     df_finales = df_filtered.loc[df_filtered.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()].copy()
-    
-    # Calculamos la posición final real rankeando solo la foto de final de temporada
     df_finales['Pos. Final'] = df_finales.groupby('Temporada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.subheader("🏆 Mayor Puntuación Final")
-        top10_temp_max = df_finales.nlargest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Pos. Final']]
+        top10_temp_max = df_finales.nlargest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Rank_Temp_Final' if 'Rank_Temp_Final' in df_finales.columns else 'Pos. Final']]
         top10_temp_max.columns = ['Mánager', 'Puntos Totales', 'Temporada', 'Pos. Final']
         top10_temp_max.index = range(1, 1 + len(top10_temp_max))
         top10_temp_max.index.name = "Pos."
@@ -87,7 +84,7 @@ def mostrar_salon_fama(df):
         
     with col_t2:
         st.subheader("📉 Peor Puntuación Final")
-        top10_temp_min = df_finales.nsmallest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Pos. Final']]
+        top10_temp_min = df_finales.nsmallest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Rank_Temp_Final' if 'Rank_Temp_Final' in df_finales.columns else 'Pos. Final']]
         top10_temp_min.columns = ['Mánager', 'Puntos Totales', 'Temporada', 'Pos. Final']
         top10_temp_min.index = range(1, 1 + len(top10_temp_min))
         top10_temp_min.index.name = "Pos."
@@ -96,12 +93,10 @@ def mostrar_salon_fama(df):
     st.markdown("---")
 
     st.header("🔥 Mayores Rachas Históricas")
-    # Para las rachas volvemos a usar df_records (sin la 24/25)
     df_rachas = df_records.copy()
     df_rachas['Pos_Acum'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=False)
     df_rachas['Pos_Acum_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=True)
     
-    # Mapa para traernos la posición final de df_finales
     pos_final_map = df_finales.set_index(['Mánager', 'Temporada'])['Pos. Final'].to_dict()
     
     df_lideres = df_rachas[df_rachas['Pos_Acum'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
