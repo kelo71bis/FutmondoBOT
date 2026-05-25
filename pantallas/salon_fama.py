@@ -12,20 +12,23 @@ def mostrar_salon_fama(df):
     st.write("Consulta los mayores hitos, desastres y rachas de la historia de LaLiga Santanguissa.")
     st.markdown("---")
     
-    df_base_records = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26')) & (df['Temporada'] != '2024/25')].copy()
+    # Base de datos COMPLETA (incluyendo 2024/25) para los récords finales
+    df_all_seasons = df[~((df['Jornada'] == 1) & (df['Temporada'] == '2025/26'))].copy()
     
     col_filtro_sf, _ = st.columns([1, 3])
     with col_filtro_sf:
-        lista_temporadas_reales = sorted(df_base_records['Temporada'].unique().tolist(), reverse=True)
+        lista_temporadas_reales = sorted(df_all_seasons['Temporada'].unique().tolist(), reverse=True)
         temporadas_sf_sel = st.multiselect("📅 Filtrar por Temporada(s):", lista_temporadas_reales, default=[], placeholder="Todas las temporadas")
         
     if len(temporadas_sf_sel) > 0:
-        df_records = df_base_records[df_base_records['Temporada'].isin(temporadas_sf_sel)].copy()
+        df_filtered = df_all_seasons[df_all_seasons['Temporada'].isin(temporadas_sf_sel)].copy()
         texto_filtro = ", ".join(temporadas_sf_sel)
     else:
-        df_records = df_base_records.copy()
+        df_filtered = df_all_seasons.copy()
         texto_filtro = "Todas las temporadas"
         
+    # Filtramos la 2024/25 SOLO para las métricas de jornadas aisladas
+    df_records = df_filtered[df_filtered['Temporada'] != '2024/25'].copy()
     df_desastres = df_records[df_records['Puntos'] > 0]
     
     if not df_records.empty:
@@ -67,13 +70,16 @@ def mostrar_salon_fama(df):
     st.markdown("---")
     
     st.header("👑 Récords de Temporada Completa")
-    df_records['Rank_Temp_Final'] = df_records.groupby('Temporada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
-    df_finales = df_records.loc[df_records.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()].copy()
+    # Para los récords finales SÍ usamos df_filtered (que incluye la 2024/25)
+    df_finales = df_filtered.loc[df_filtered.groupby(['Temporada', 'Mánager'])['Jornada'].idxmax()].copy()
+    
+    # Calculamos la posición final real rankeando solo la foto de final de temporada
+    df_finales['Pos. Final'] = df_finales.groupby('Temporada')['Puntos_Acumulados'].rank(method='min', ascending=False).astype(int)
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.subheader("🏆 Mayor Puntuación Final")
-        top10_temp_max = df_finales.nlargest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Rank_Temp_Final']]
+        top10_temp_max = df_finales.nlargest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Pos. Final']]
         top10_temp_max.columns = ['Mánager', 'Puntos Totales', 'Temporada', 'Pos. Final']
         top10_temp_max.index = range(1, 1 + len(top10_temp_max))
         top10_temp_max.index.name = "Pos."
@@ -81,7 +87,7 @@ def mostrar_salon_fama(df):
         
     with col_t2:
         st.subheader("📉 Peor Puntuación Final")
-        top10_temp_min = df_finales.nsmallest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Rank_Temp_Final']]
+        top10_temp_min = df_finales.nsmallest(10, 'Puntos_Acumulados')[['Mánager', 'Puntos_Acumulados', 'Temporada', 'Pos. Final']]
         top10_temp_min.columns = ['Mánager', 'Puntos Totales', 'Temporada', 'Pos. Final']
         top10_temp_min.index = range(1, 1 + len(top10_temp_min))
         top10_temp_min.index.name = "Pos."
@@ -90,10 +96,13 @@ def mostrar_salon_fama(df):
     st.markdown("---")
 
     st.header("🔥 Mayores Rachas Históricas")
+    # Para las rachas volvemos a usar df_records (sin la 24/25)
     df_rachas = df_records.copy()
     df_rachas['Pos_Acum'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=False)
     df_rachas['Pos_Acum_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos_Acumulados'].rank(method='min', ascending=True)
-    pos_final_map = df_finales.set_index(['Mánager', 'Temporada'])['Rank_Temp_Final'].to_dict()
+    
+    # Mapa para traernos la posición final de df_finales
+    pos_final_map = df_finales.set_index(['Mánager', 'Temporada'])['Pos. Final'].to_dict()
     
     df_lideres = df_rachas[df_rachas['Pos_Acum'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
     df_lideres['Grupo_Racha'] = (df_lideres['Jornada'] != df_lideres['Jornada'].shift() + 1).cumsum()
@@ -102,6 +111,8 @@ def mostrar_salon_fama(df):
     top10_rachas_lider = rachas_lider.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']].copy()
     top10_rachas_lider['Pos. Final Año'] = top10_rachas_lider.set_index(['Mánager', 'Temporada']).index.map(pos_final_map)
     top10_rachas_lider.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada', 'Pos. Final Año']
+    top10_rachas_lider.index = range(1, 1 + len(top10_rachas_lider))
+    top10_rachas_lider.index.name = "Pos."
     
     df_ultimos_streak = df_rachas[df_rachas['Pos_Acum_Peor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
     df_ultimos_streak['Grupo_Racha'] = (df_ultimos_streak['Jornada'] != df_ultimos_streak['Jornada'].shift() + 1).cumsum()
@@ -110,6 +121,8 @@ def mostrar_salon_fama(df):
     top10_rachas_ultimo = rachas_ultimo.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']].copy()
     top10_rachas_ultimo['Pos. Final Año'] = top10_rachas_ultimo.set_index(['Mánager', 'Temporada']).index.map(pos_final_map)
     top10_rachas_ultimo.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada', 'Pos. Final Año']
+    top10_rachas_ultimo.index = range(1, 1 + len(top10_rachas_ultimo))
+    top10_rachas_ultimo.index.name = "Pos."
 
     df_rachas['Pos_Jor_Mejor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=False)
     df_rachas['Pos_Jor_Peor'] = df_rachas.groupby(['Temporada', 'Jornada'])['Puntos'].rank(method='min', ascending=True)
@@ -121,6 +134,8 @@ def mostrar_salon_fama(df):
     top10_rachas_mvp = rachas_mvp.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']].copy()
     top10_rachas_mvp['Pos. Final Año'] = top10_rachas_mvp.set_index(['Mánager', 'Temporada']).index.map(pos_final_map)
     top10_rachas_mvp.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada', 'Pos. Final Año']
+    top10_rachas_mvp.index = range(1, 1 + len(top10_rachas_mvp))
+    top10_rachas_mvp.index.name = "Pos."
     
     df_peor_streak = df_rachas[df_rachas['Pos_Jor_Peor'] == 1].sort_values(['Mánager', 'Temporada', 'Jornada'])
     df_peor_streak['Grupo_Racha'] = (df_peor_streak['Jornada'] != df_peor_streak['Jornada'].shift() + 1).cumsum()
@@ -129,29 +144,27 @@ def mostrar_salon_fama(df):
     top10_rachas_peor_jor = rachas_peor_jor.nlargest(10, 'Jornadas_Seguidas')[['Mánager', 'Jornadas_Seguidas', 'Rango', 'Temporada']].copy()
     top10_rachas_peor_jor['Pos. Final Año'] = top10_rachas_peor_jor.set_index(['Mánager', 'Temporada']).index.map(pos_final_map)
     top10_rachas_peor_jor.columns = ['Mánager', 'Jornadas Seguidas', 'Rango', 'Temporada', 'Pos. Final Año']
+    top10_rachas_peor_jor.index = range(1, 1 + len(top10_rachas_peor_jor))
+    top10_rachas_peor_jor.index.name = "Pos."
 
     st.subheader("Jornadas seguidas en la cumbre o en el pozo")
     col_r1, col_r2 = st.columns(2)
     with col_r1:
         st.caption("👑 **Líderes de Hierro** (Semanas consecutivas siendo 1º de la general)")
-        top10_rachas_lider.index = range(1, 1 + len(top10_rachas_lider))
-        st.dataframe(top10_rachas_lider.reset_index().set_index(['Rank', 'Mánager'] if 'Rank' in top10_rachas_lider else ['Mánager']), use_container_width=True)
+        st.dataframe(top10_rachas_lider.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
     with col_r2:
         st.caption("⚓ **Fango Eterno** (Semanas consecutivas siendo último de la general)")
-        top10_rachas_ultimo.index = range(1, 1 + len(top10_rachas_ultimo))
-        st.dataframe(top10_rachas_ultimo.reset_index().set_index(['Rank', 'Mánager'] if 'Rank' in top10_rachas_ultimo else ['Mánager']), use_container_width=True)
+        st.dataframe(top10_rachas_ultimo.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader("Jornadas consecutivas dando la nota (para bien y para mal)")
     col_r3, col_r4 = st.columns(2)
     with col_r3:
         st.caption("⬆️ **Jornadas consecutivas On Fire** (Semanas seguidas ganando la jornada)")
-        top10_rachas_mvp.index = range(1, 1 + len(top10_rachas_mvp))
-        st.dataframe(top10_rachas_mvp.reset_index().set_index(['Rank', 'Mánager'] if 'Rank' in top10_rachas_mvp else ['Mánager']), use_container_width=True)
+        st.dataframe(top10_rachas_mvp.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
     with col_r4:
         st.caption("💩 **Jornadas consecutivas dando pena** (Semanas seguidas siendo el peor de la jornada)")
-        top10_rachas_peor_jor.index = range(1, 1 + len(top10_rachas_peor_jor))
-        st.dataframe(top10_rachas_peor_jor.reset_index().set_index(['Rank', 'Mánager'] if 'Rank' in top10_rachas_peor_jor else ['Mánager']), use_container_width=True)
+        st.dataframe(top10_rachas_peor_jor.reset_index().set_index(['Pos.', 'Mánager']), use_container_width=True)
 
     st.markdown("---")
 
