@@ -3,11 +3,13 @@ import pandas as pd
 import numpy as np
 
 def mostrar_royal_rumble(df):
-    c_nav1, c_nav2, c_nav3, c_nav4 = st.columns(4)
+    # Botonera unificada de 5 botones
+    c_nav1, c_nav2, c_nav3, c_nav4, c_nav5 = st.columns(5)
     if c_nav1.button("🏠 Menú Principal", use_container_width=True): st.session_state.pantalla = "🏠 Menú Principal"; st.rerun()
     if c_nav2.button("📈 Análisis", use_container_width=True): st.session_state.pantalla = "📈 Análisis por temporadas"; st.rerun()
     if c_nav3.button("🏆 Salón Fama", use_container_width=True): st.session_state.pantalla = "🏆 Salón de la Fama"; st.rerun()
-    if c_nav4.button("⚔️ Cara a Cara", use_container_width=True): st.session_state.pantalla = "⚔️ Cara a Cara"; st.rerun()
+    if c_nav4.button("🥇 Palmarés", use_container_width=True): st.session_state.pantalla = "🥇 Palmarés Histórico"; st.rerun()
+    if c_nav5.button("⚔️ Cara a Cara", use_container_width=True): st.session_state.pantalla = "⚔️ Cara a Cara"; st.rerun()
         
     st.title("🤼 Royal Rumble")
     st.write("La jaula de acero. Todos contra todos cruzando históricos directos.")
@@ -135,7 +137,6 @@ def mostrar_royal_rumble(df):
         st.subheader("👨‍👦 Matriz de Padreadas")
         st.caption("Lee por filas: Récord máximo de jornadas seguidas superando en puntos a la columna (sin empates).")
         max_padr = df_padr_num.max().max() if not df_padr_num.isna().all().all() else 1
-        # Usamos 'Blues' para esta matriz específica (escala de un solo color)
         styled_padr = aplicar_heatmap(df_padr_disp, df_padr_num, vmin=0, vmax=max_padr, cmap='Blues')
         st.dataframe(styled_padr, use_container_width=True)
         
