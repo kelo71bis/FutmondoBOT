@@ -58,7 +58,7 @@ df, df_ligas, df_copas = cargar_datos_v3()
 
         
         # 🛡️ ESCUDO ANTI-FALLOS Y ANTI-CACHÉ: Forzar texto, minúsculas y limpiar espacios
-df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip().str.lower()
+        df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip().str.lower()
         mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
         
         df['ID_Futmondo'] = df['ID_Futmondo'].astype(str).str.strip().str.lower()
