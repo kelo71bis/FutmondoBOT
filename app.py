@@ -15,17 +15,46 @@ st.set_page_config(page_title="LaLiga Santanguissa", page_icon="🏆", layout="w
 
 # 🧠 CACHÉ DE DATOS
 @st.cache_data
-def cargar_datos_v2():
+def cargar_datos_v3():
     ruta_master = "datos/vistas_negocio/Fact_Global_Master.xlsx"
-    ruta_propietarios = "datos/maestros/md_propietarios.xlsx"
     ruta_ligas = "datos/maestros/md_palmares_liga.xlsx"
     ruta_copas = "datos/maestros/md_palmares_copa.xlsx"
     
     df, df_ligas, df_copas = None, None, None
     
-    if os.path.exists(ruta_master) and os.path.exists(ruta_propietarios):
+    if os.path.exists(ruta_master):
         df = pd.read_excel(ruta_master)
-        df_prop = pd.read_excel(ruta_propietarios)
+        
+        # 🚑 PARCHE DE EMERGENCIA: Diccionario manual extraído de la clasificación
+        mapeo_nombres = {
+            "62d5bd9ad8106d3355b5bdc1": "Pallejandro",
+            "5f452f5e66dd374930eb2b71": "FC Mikelona",
+            "5f45324dec331549297ee971": "Jatafe",
+            "5f453062ec331549297ee6b8": "Real Dendryd",
+            "5f4530beec331549297ee6d6": "URSS",
+            "5f47aeb6c387a50bca03dd55": "Cruyffisme FC",
+            "5f4531e9764e7d491e029746": "Cracklos F.C",
+            "5f47ab5b9e2edb0bb831c703": "Bichos Team"
+        }
+        
+        # Aplicamos el parche limpiando los IDs por si acaso
+        df['ID_Futmondo'] = df['ID_Futmondo'].astype(str).str.strip().str.lower()
+        df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
+        
+        if os.path.exists(ruta_ligas):
+            df_ligas = pd.read_excel(ruta_ligas)
+            df_ligas['ID_Futmondo'] = df_ligas['ID_Futmondo'].astype(str).str.strip().str.lower()
+            df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
+            
+        if os.path.exists(ruta_copas):
+            df_copas = pd.read_excel(ruta_copas)
+            df_copas['ID_Futmondo'] = df_copas['ID_Futmondo'].astype(str).str.strip().str.lower()
+            df_copas['Mánager'] = df_copas['ID_Futmondo'].map(mapeo_nombres).fillna(df_copas['ID_Futmondo'])
+            
+    return df, df_ligas, df_copas
+
+df, df_ligas, df_copas = cargar_datos_v3()
+
         
         # 🛡️ ESCUDO ANTI-FALLOS Y ANTI-CACHÉ: Forzar texto, minúsculas y limpiar espacios
         df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip().str.lower()
