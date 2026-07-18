@@ -15,7 +15,7 @@ st.set_page_config(page_title="LaLiga Santanguissa", page_icon="🏆", layout="w
 
 # 🧠 CACHÉ DE DATOS
 @st.cache_data
-def cargar_datos():
+def cargar_datos_v2():
     ruta_master = "datos/vistas_negocio/Fact_Global_Master.xlsx"
     ruta_propietarios = "datos/maestros/md_propietarios.xlsx"
     ruta_ligas = "datos/maestros/md_palmares_liga.xlsx"
@@ -27,46 +27,27 @@ def cargar_datos():
         df = pd.read_excel(ruta_master)
         df_prop = pd.read_excel(ruta_propietarios)
         
-        # 🛡️ ESCUDO ANTI-FALLOS: Forzar texto y limpiar espacios fantasma en los Excel
-        df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip()
+        # 🛡️ ESCUDO ANTI-FALLOS Y ANTI-CACHÉ: Forzar texto, minúsculas y limpiar espacios
+        df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip().str.lower()
         mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
         
-        df['ID_Futmondo'] = df['ID_Futmondo'].astype(str).str.strip()
+        df['ID_Futmondo'] = df['ID_Futmondo'].astype(str).str.strip().str.lower()
         df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
-            
+        
         if os.path.exists(ruta_ligas):
             df_ligas = pd.read_excel(ruta_ligas)
-            df_ligas['ID_Futmondo'] = df_ligas['ID_Futmondo'].astype(str).str.strip()
+            df_ligas['ID_Futmondo'] = df_ligas['ID_Futmondo'].astype(str).str.strip().str.lower()
             df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
             
         if os.path.exists(ruta_copas):
             df_copas = pd.read_excel(ruta_copas)
-            df_copas['ID_Futmondo'] = df_copas['ID_Futmondo'].astype(str).str.strip()
+            df_copas['ID_Futmondo'] = df_copas['ID_Futmondo'].astype(str).str.strip().str.lower()
             df_copas['Mánager'] = df_copas['ID_Futmondo'].map(mapeo_nombres).fillna(df_copas['ID_Futmondo'])
             
     return df, df_ligas, df_copas
 
-    
-    df, df_ligas, df_copas = None, None, None
-    
-    if os.path.exists(ruta_master) and os.path.exists(ruta_propietarios):
-        df = pd.read_excel(ruta_master)
-        df_prop = pd.read_excel(ruta_propietarios)
-        mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
-        
-        df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
-            
-        if os.path.exists(ruta_ligas):
-            df_ligas = pd.read_excel(ruta_ligas)
-            df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
-            
-        if os.path.exists(ruta_copas):
-            df_copas = pd.read_excel(ruta_copas)
-            df_copas['Mánager'] = df_copas['ID_Futmondo'].map(mapeo_nombres).fillna(df_copas['ID_Futmondo'])
-            
-    return df, df_ligas, df_copas
+df, df_ligas, df_copas = cargar_datos_v2()
 
-df, df_ligas, df_copas = cargar_datos()
 
 # 🛡️ HISTORIAL FIJO DE LA TEMPORADA INAUGURAL 2020/21
 clasificacion_2020_21 = ["FC Mikelona", "Arsenati", "Cruyffisme FC", "URSS", "Jatafe", "Real Dendryd", "Cracklos F.C", "Bichos Team"]
