@@ -55,6 +55,7 @@ def cargar_datos_v3():
 
 df, df_ligas, df_copas = cargar_datos_v3()
 
+
         
         # 🛡️ ESCUDO ANTI-FALLOS Y ANTI-CACHÉ: Forzar texto, minúsculas y limpiar espacios
         df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip().str.lower()
