@@ -26,6 +26,32 @@ def cargar_datos():
     if os.path.exists(ruta_master) and os.path.exists(ruta_propietarios):
         df = pd.read_excel(ruta_master)
         df_prop = pd.read_excel(ruta_propietarios)
+        
+        # 🛡️ ESCUDO ANTI-FALLOS: Forzar texto y limpiar espacios fantasma en los Excel
+        df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip()
+        mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
+        
+        df['ID_Futmondo'] = df['ID_Futmondo'].astype(str).str.strip()
+        df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
+            
+        if os.path.exists(ruta_ligas):
+            df_ligas = pd.read_excel(ruta_ligas)
+            df_ligas['ID_Futmondo'] = df_ligas['ID_Futmondo'].astype(str).str.strip()
+            df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
+            
+        if os.path.exists(ruta_copas):
+            df_copas = pd.read_excel(ruta_copas)
+            df_copas['ID_Futmondo'] = df_copas['ID_Futmondo'].astype(str).str.strip()
+            df_copas['Mánager'] = df_copas['ID_Futmondo'].map(mapeo_nombres).fillna(df_copas['ID_Futmondo'])
+            
+    return df, df_ligas, df_copas
+
+    
+    df, df_ligas, df_copas = None, None, None
+    
+    if os.path.exists(ruta_master) and os.path.exists(ruta_propietarios):
+        df = pd.read_excel(ruta_master)
+        df_prop = pd.read_excel(ruta_propietarios)
         mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
         
         df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
