@@ -56,29 +56,6 @@ def cargar_datos_v3():
 df, df_ligas, df_copas = cargar_datos_v3()
 
 
-        
-        # 🛡️ ESCUDO ANTI-FALLOS Y ANTI-CACHÉ: Forzar texto, minúsculas y limpiar espacios
-        df_prop['id_propietario'] = df_prop['id_propietario'].astype(str).str.strip().str.lower()
-        mapeo_nombres = df_prop.set_index('id_propietario')['nombre'].to_dict()
-        
-        df['ID_Futmondo'] = df['ID_Futmondo'].astype(str).str.strip().str.lower()
-        df['Mánager'] = df['ID_Futmondo'].map(mapeo_nombres).fillna(df['ID_Futmondo'])
-        
-        if os.path.exists(ruta_ligas):
-            df_ligas = pd.read_excel(ruta_ligas)
-            df_ligas['ID_Futmondo'] = df_ligas['ID_Futmondo'].astype(str).str.strip().str.lower()
-            df_ligas['Mánager'] = df_ligas['ID_Futmondo'].map(mapeo_nombres).fillna(df_ligas['ID_Futmondo'])
-            
-        if os.path.exists(ruta_copas):
-            df_copas = pd.read_excel(ruta_copas)
-            df_copas['ID_Futmondo'] = df_copas['ID_Futmondo'].astype(str).str.strip().str.lower()
-            df_copas['Mánager'] = df_copas['ID_Futmondo'].map(mapeo_nombres).fillna(df_copas['ID_Futmondo'])
-            
-    return df, df_ligas, df_copas
-
-df, df_ligas, df_copas = cargar_datos_v2()
-
-
 # 🛡️ HISTORIAL FIJO DE LA TEMPORADA INAUGURAL 2020/21
 clasificacion_2020_21 = ["FC Mikelona", "Arsenati", "Cruyffisme FC", "URSS", "Jatafe", "Real Dendryd", "Cracklos F.C", "Bichos Team"]
 
